@@ -1,0 +1,56 @@
+export const mockCourses = [
+  {
+    code: "CSE 100",
+    name: "Advanced Data Structures",
+    professor: "Prof. Alice Johnson",
+    rating: 4.7,
+    days: ["Mon", "Wed"],
+    startTime: "09:00",
+    endTime: "10:20"
+  },
+  {
+    code: "CSE 101",
+    name: "Algorithms",
+    professor: "Prof. Bob Smith",
+    rating: 3.9,
+    days: ["Tue", "Thu"],
+    startTime: "11:00",
+    endTime: "12:20"
+  },
+  {
+    code: "CSE 110",
+    name: "Software Engineering",
+    professor: "Prof. Carol Lee",
+    rating: 4.8,
+    days: ["Mon", "Wed", "Fri"],
+    startTime: "10:00",
+    endTime: "10:50"
+  },
+  {
+    code: "MATH 20C",
+    name: "Calculus for Science and Engineering",
+    professor: "Prof. Daniel Kim",
+    rating: 4.2,
+    days: ["Tue", "Thu"],
+    startTime: "08:00",
+    endTime: "09:20"
+  },
+  {
+    code: "PHYS 2A",
+    name: "Physics Mechanics",
+    professor: "Prof. Emma Davis",
+    rating: 3.5,
+    days: ["Mon", "Wed", "Fri"],
+    startTime: "13:00",
+    endTime: "13:50"
+  },
+  {
+    code: "CSE 120",
+    name: "Operating Systems",
+    professor: "Prof. Frank Nguyen",
+    rating: 4.6,
+    days: ["Tue", "Thu"],
+    startTime: "14:00",
+    endTime: "15:20"
+  }
+];

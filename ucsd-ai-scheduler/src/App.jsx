@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { suggestCourses } from './logic/scheduler';
+import { parsePreferences } from './utils/parsePrefs';
 
 function App() {
   const [form, setForm] = useState({
@@ -9,20 +10,28 @@ function App() {
     preferences: ''
   });
 
+  const [results, setResults] = useState([]);
+  
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const [results, setResults] = useState([]);
-
-  const handleSubmit = (e) => {
+  async function handleSubmit(e) {
     e.preventDefault();
+  
+    // Parse preferences string with AI
+    const parsedPrefs = await parsePreferences(form.preferences);
+  
+    // Suggest courses with parsed preferences object
     const courses = suggestCourses({
-      ...form,
-      completedCourses: form.completedCourses.split(',').map(c => c.trim())
+      major: form.major,
+      college: form.college,
+      completedCourses: form.completedCourses.split(',').map(c => c.trim()),
+      preferences: parsedPrefs,
     });
+  
     setResults(courses);
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -32,14 +41,15 @@ function App() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block mb-1 font-medium">Major</label>
-            <input
-              type="text"
+            <select
               name="major"
               value={form.major}
               onChange={handleChange}
               className="w-full border rounded p-2"
-              placeholder="e.g. Computer Science"
-            />
+            >
+              <option value ="">Select</option>
+              <option value = "Computer Science">Computer Science</option>
+            </select>
           </div>
 
           <div>
