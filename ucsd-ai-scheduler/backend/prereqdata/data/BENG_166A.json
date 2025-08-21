@@ -1,0 +1,33 @@
+{
+  "code": "BENG 166A",
+  "title": "Cell and Tissue Engineering",
+  "units": "4",
+  "dept": "BENG",
+  "anchor": "beng166a",
+  "description": "Engineering analysis of physico-chemical rate processes that affect, limit, and govern the function of cells and tissues. Cell migration, mitosis, apoptosis, and differentiation. Dynamic and structural interactions between mesenchyme and parenchyme. The role of the tissue microenvironment including cell-cell interactions, extracellular matrix, and growth factor communication. The design of functional tissue substitutes including cell and material sourcing, scale-up and manufacturability, efficacy and safety, regulatory, and ethical topics. Clinical applications. Prerequisites: BILD 1 and CHEM 6C or CHEM 6CH or CHEM 7L or CHEM 7LM and MATH 20D and PHYS 2A or PHYS 2AR, PHYS 2B-C; senior standing or consent of department. (F)",
+  "prereqs": {
+    "type": "all",
+    "courses": [
+      "BILD 1",
+      {
+        "type": "one",
+        "courses": [
+          "CHEM 6C",
+          "CHEM 6CH",
+          "CHEM 7L",
+          "CHEM 7LM"
+        ]
+      },
+      "MATH 20D",
+      {
+        "type": "one",
+        "courses": [
+          "PHYS 2A",
+          "PHYS 2AR"
+        ]
+      },
+      "PHYS 2B",
+      "PHYS 2C"
+    ]
+  }
+}

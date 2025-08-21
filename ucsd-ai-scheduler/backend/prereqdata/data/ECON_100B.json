@@ -1,0 +1,20 @@
+{
+  "code": "ECON 100B",
+  "title": "Microeconomics B",
+  "units": "4",
+  "dept": "ECON",
+  "anchor": "econ100b",
+  "description": "Game theory and analysis of the effects of imperfect market structure, strategy and information economics, public goods, and externalities. Prerequisites: ECON 100A.",
+  "prereqs": "ECON 100A",
+  "successors": [
+    "ECON 100C",
+    "ECON 101",
+    "ECON 102",
+    "ECON 106",
+    "ECON 107",
+    "ECON 116",
+    "ECON 136",
+    "ECON 139",
+    "ECON 140"
+  ]
+}

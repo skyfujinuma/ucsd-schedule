@@ -1,3 +1,13 @@
+# ## Credits
+
+This project makes use of the following open-source resources:
+
+- [Classes_Scraper](https://github.com/newracket/Classes_Scraper) by Aniket Gupta — Python-based scraper for UCSD course data, used to collect and structure on demand course info for the upcoming quarter.
+- [GrAPE (Graphical Assistant for Prerequisite Enrollment)](https://github.com/wllmwu/course-grapher) by William Wu — provided structured prerequisite data for all courses.
+
+I thank the authors for making these resources publicly available. All data and code are used in accordance with their respective licenses and with attribution.
+
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.

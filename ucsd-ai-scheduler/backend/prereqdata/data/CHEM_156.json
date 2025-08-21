@@ -1,0 +1,21 @@
+{
+  "code": "CHEM 156",
+  "title": "Structure and Properties of Organic Molecules",
+  "units": "4",
+  "dept": "CHEM",
+  "anchor": "chem156",
+  "description": "Introduction to the physical properties of organic molecules and strategies to investigate the microscopic elements of catalytic reactions. Topics covered include catalytic rate laws determinations, isotope effects, linear free energy relationships, non-covalent interactions, and pH/pKa. This is the third quarter of the advanced organic chemistry sequence. May be coscheduled with CHEM 256. Prerequisites: CHEM 40B or 41C and CHEM 120A. Recommended: CHEM 154 is strongly recommended.",
+  "prereqs": {
+    "type": "all",
+    "courses": [
+      {
+        "type": "one",
+        "courses": [
+          "CHEM 40B",
+          "CHEM 41C"
+        ]
+      },
+      "CHEM 120A"
+    ]
+  }
+}

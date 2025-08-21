@@ -59,8 +59,9 @@ app.get("/api/courses", async (req, res) => {
     const rawData = await fs.readFile("Classes_Scraper/data/fa25.json", "utf-8");
     const data = JSON.parse(rawData);
 
+    /* option A: store backend data NESTED
+
     const transformed = {};
-    
     for (const [dept, courses] of Object.entries(data)) {
       transformed[dept] = {};
       for (const [courseNum, sections] of Object.entries(courses)) {
@@ -74,6 +75,28 @@ app.get("/api/courses", async (req, res) => {
           seatsRemaining: section.seatsRemaining.trim() === '' ? null : Number(section.seatsRemaining),
           spaces: section.spaces.trim() === '' ? null : Number(section.spaces),
         }));
+      }
+    }
+    */
+
+    // option B: store backend data FLAT
+    const transformed = [];
+    for (const dept in data) {
+      for (const courseNum in data[dept]) {
+        for (const section of data[dept][courseNum]) {
+          transformed.push({
+            dept,
+            code: courseNum,
+            sectionType: section.sectionType,
+            days: Array.isArray(section.days) ? section.days : parseDays(section.days),
+            times: typeof section.times === "object" ? section.times : parseTimes(section.times),
+            buildingName: section.buildingName,
+            roomNumber: section.roomNumber,
+            professor: section.professor,
+            seatsRemaining: section.seatsRemaining?.toString().trim() === "" ? null : Number(section.seatsRemaining),
+            spaces: section.spaces?.toString().trim() === "" ? null : Number(section.spaces),
+          });
+        }
       }
     }
 

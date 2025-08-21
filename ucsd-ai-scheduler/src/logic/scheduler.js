@@ -6,24 +6,8 @@ import { coursePrereqs } from "../data/prereqs";
 const res = await fetch("http://localhost:3001/api/courses");
 const allCourses = await res.json();
 
-// Turn nested JSON like { AAS: { 10R: [...] }, ... } into flat list
-const flatCourses = Object.entries(allCourses)
-  .flatMap(([subject, courses]) =>
-    Object.entries(courses).flatMap(([number, sections]) =>
-      sections.map(section => ({
-        ...section,
-        code: `${subject} ${number}`
-      }))
-    )
-  );
-
-function hasPreReqs(course, completed) {
-  const prereqs = coursePrereqs[course] || [];
-  return prereqs.every(pr => completed.has(pr));
-}
-
 function isPreferredCourse(courseCode, preferences) {
-  const sections = flatCourses.filter(c => c.code === courseCode);
+  const sections = allCourses.filter(c => c.code === courseCode);
 
   const validSections = sections.filter(s => {
     const earliestStart = parseInt(s.startTime?.split(":")[0]) || 0;

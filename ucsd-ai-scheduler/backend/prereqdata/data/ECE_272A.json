@@ -1,0 +1,12 @@
+{
+  "code": "ECE 272A",
+  "title": "Dynamic Systems I: Linear Systems",
+  "units": "4",
+  "dept": "ECE",
+  "anchor": "ece272a",
+  "description": "Continuous-time and discrete-time linear dynamical systems, state space representations, notions of solution, variation of constants formula, Lyapunov stability, BIBO stability, observability/detectability, controllability/stabilizability, Kalman decompositions, state/output feedback constructions, introduction to linear quadratic regulators, and minimal decompositions. Recommended preparation: ECE 250. Prerequisites: ECE 269; graduate standing.",
+  "prereqs": "ECE 269",
+  "successors": [
+    "ECE 272B"
+  ]
+}

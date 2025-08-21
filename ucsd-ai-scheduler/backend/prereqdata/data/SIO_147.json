@@ -1,0 +1,9 @@
+{
+  "code": "SIO 147",
+  "title": "Applications of Phylogenetics",
+  "units": "6",
+  "dept": "SIO",
+  "anchor": "sio147",
+  "description": "Because life\u2019s history spans macroevolutionary time scales, challenging direct study, we rely on indirect tools like phylogenetics. The first part of the course covers phylogenetic inference theory, encompassing principles and applications. Part two delves into phylogenetic comparative methods, employing trees for macroevolutionary inference. These methods explore global biodiversity, diversification rates, and morphological evolution. The course also features a substantial computer lab component. Prerequisites: BILD 3 or consent of instructor.",
+  "prereqs": "BILD 3"
+}

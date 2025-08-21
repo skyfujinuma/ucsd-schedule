@@ -1,0 +1,8 @@
+{
+  "code": "ECE 202",
+  "title": "Implantable Medical Devices and Interfaces",
+  "units": "4",
+  "dept": "ECE",
+  "anchor": "ece202",
+  "description": "Basics of biopotentials, excitable cells, electrochemical properties of bioelectronic interfaces, micromachining for implantable medical devices, neural probe technology materials and devices for sensing and stimulation, implantable cardiac technologies, cochlear and retinal implants, and packaging of implantable medical devices, with labs on characterization of implantable sensing, stimulation electrodes, design and micromachining of EEG/EMG arrays, EEG/EMG recordings, and neural data analysis. Recommended preparation: prior knowledge of undergraduate-level signal processing and circuits, and MATLAB or Python programming. Prerequisites: senior or graduate level standing."
+}

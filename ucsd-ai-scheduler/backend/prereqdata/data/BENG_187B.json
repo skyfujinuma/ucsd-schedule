@@ -1,0 +1,12 @@
+{
+  "code": "BENG 187B",
+  "title": "Bioengineering Design Project: Development",
+  "units": "1",
+  "dept": "BENG",
+  "anchor": "beng187b",
+  "description": "Development of an original bioengineering design for solution of a problem in biology or medicine. Analysis of economic issues, manufacturing and quality assurance, ethics, safety, design constraints, government regulations, and patent requirements. Oral presentation and formal engineering reports. Career and professional advising. Majors must enroll in the course for a letter grade in order to count the sequence toward the major. No exceptions will be approved. Prerequisites: BENG 187A; bioengineering, bioengineering: biotechnology, or bioengineering: biosystems or bioengineering: bioinformatics majors only or consent of instructor. (F)",
+  "prereqs": "BENG 187A",
+  "successors": [
+    "BENG 187C"
+  ]
+}

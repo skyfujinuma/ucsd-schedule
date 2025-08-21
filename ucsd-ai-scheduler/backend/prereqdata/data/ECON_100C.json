@@ -1,0 +1,22 @@
+{
+  "code": "ECON 100C",
+  "title": "Microeconomics C",
+  "units": "4",
+  "dept": "ECON",
+  "anchor": "econ100c",
+  "description": "Advanced analysis of production, costs, the supply of output, and demand for factors of production. Advanced analysis of the demand for goods and services. Applications to consumption and saving decisions, strategic behavior, and the supply of labor. General equilibrium and welfare. Prerequisites: ECON 100B.",
+  "prereqs": "ECON 100B",
+  "successors": [
+    "ECON 104",
+    "ECON 105",
+    "ECON 109",
+    "ECON 113",
+    "ECON 137",
+    "ECON 141",
+    "ECON 143",
+    "ECON 150",
+    "ECON 151",
+    "ECON 152",
+    "ECON 182"
+  ]
+}

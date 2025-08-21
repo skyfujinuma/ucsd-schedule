@@ -1,0 +1,16 @@
+{
+  "code": "LTSP 101",
+  "title": "Major Works of the Middle Ages",
+  "units": "4",
+  "dept": "LIT",
+  "anchor": "ltsp101",
+  "description": "Major Spanish literary works of the Middle Ages and Renaissance as seen against the historical and intellectual background of this period. Renumbered from LTSP 100. Students may receive a combined total of twelve units for LTSP 100 and LTSP 101.  Prerequisites:  LTSP 100A or 100B or 100F, or consent of instructor.",
+  "prereqs": {
+    "type": "one",
+    "courses": [
+      "LTSP 100A",
+      "LTSP 100B",
+      "LTSP 100F"
+    ]
+  }
+}

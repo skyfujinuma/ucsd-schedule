@@ -1,0 +1,16 @@
+{
+  "code": "SIOC 203C",
+  "title": "Introduction to Applied Mathematics III",
+  "units": "5",
+  "dept": "SIO",
+  "anchor": "sioc203c",
+  "description": "Perturbation theory, asymptotic methods, and asymptotic expansions. Approximate methods for linear and nonlinear differential equations, such as WKB, the method of multiple scales, and boundary layer theory. Cross-listed with MAE 294C. Prerequisites: graduate standing and MAE 294B or SIOC 203B or SIOC 215B or consent of instructor.",
+  "prereqs": {
+    "type": "one",
+    "courses": [
+      "MAE 294B",
+      "SIOC 203B",
+      "SIOC 215B"
+    ]
+  }
+}

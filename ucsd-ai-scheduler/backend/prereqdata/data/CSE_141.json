@@ -1,0 +1,24 @@
+{
+  "code": "CSE 141",
+  "title": "Introduction to Computer Architecture",
+  "units": "4",
+  "dept": "CSE",
+  "anchor": "cse141",
+  "description": "Introduction to computer architecture. Computer system design. Processor design. Control design. Memory systems.\u00a0Two units of credit offered for CSE 141 if CSE 142 taken previously. Prerequisites: CSE 30 or ECE 30 and CSE 140; restricted to CS25, CS26, CS27, CS29, and EC26 majors. All other students will be allowed as space permits.",
+  "prereqs": {
+    "type": "all",
+    "courses": [
+      {
+        "type": "one",
+        "courses": [
+          "CSE 30",
+          "ECE 30"
+        ]
+      },
+      "CSE 140"
+    ]
+  },
+  "successors": [
+    "CSE 148"
+  ]
+}
