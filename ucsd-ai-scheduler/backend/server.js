@@ -2,7 +2,8 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import fs from "fs/promises";
+import * as fs from "fs"; 
+import path from "path";
 
 
 
@@ -56,7 +57,7 @@ function parseTimes(timesStr) {
 
 app.get("/api/courses", async (req, res) => {
   try {
-    const rawData = await fs.readFile("Classes_Scraper/data/fa25.json", "utf-8");
+    const rawData = await fs.readFileSync("Classes_Scraper/data/fa25.json", "utf-8");
     const data = JSON.parse(rawData);
 
     /* option A: store backend data NESTED
@@ -103,28 +104,87 @@ app.get("/api/courses", async (req, res) => {
     res.json(transformed);
 
   } catch (err) {
-    console.error(err);
+    console.error("Error in /api/courses:", err);
     res.status(500).send("Course data unavailable or parsing failed");
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const majorReqsDir = path.join(process.cwd(), "requirementdata/majorreq");
+
+// Load all majors at startup into memory
+function loadAllMajorReqs() {
+  const majors = {};
+  const files = fs.readdirSync(majorReqsDir);
+  files.forEach(file => {
+    if (file.endsWith(".json")) {
+      const code = path.basename(file, ".json").toUpperCase(); // e.g. cs25.json -> CS25
+      const data = JSON.parse(fs.readFileSync(path.join(majorReqsDir, file), "utf-8"));
+      majors[code] = data;
+    }
+  });
+  return majors;
+}
+
+const majorReqs = loadAllMajorReqs();
+
+// GET all majors (returns an object with all codes)
+app.get("/api/major-reqs", (req, res) => {
+  res.json(majorReqs);
 });
 
-
-app.get("/api/courses", (req, res) => {
-  try {
-    const data = fs.readFileSync("./data/courses.json", "utf-8");
-    res.json(JSON.parse(data));
-  } catch (err) {
-    res.status(500).send("Course data unavailable");
+// GET single major, e.g. /api/major-reqs/CS25
+app.get("/api/major-reqs/:major", (req, res) => {
+  const major = req.params.major.toUpperCase();
+  if (majorReqs[major]) {
+    res.json(majorReqs[major]);
+  } else {
+    res.status(404).json({ error: `Major ${major} not found` });
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+
+//prereqs
+const PREQ_DIR = path.join(process.cwd(), "requirementdata/prereqdata/data");
+
+// Load all prereqs synchronously
+function loadAllPrereqsSync() {
+  const files = fs.readdirSync(PREQ_DIR);
+  const allPrereqs = {};
+
+  files.forEach(file => {
+    if (file.endsWith(".json")) {
+      const raw = fs.readFileSync(path.join(PREQ_DIR, file), "utf-8");
+      const data = JSON.parse(raw);
+      allPrereqs[data.code] = data;
+    }
+  });
+
+  return allPrereqs;
+}
+
+// Load once at server start
+const allPrereqs = loadAllPrereqsSync();
+console.log("Loaded prereqs:", Object.keys(allPrereqs).length);
+
+// Endpoint for all courses
+app.get("/api/prereqs", (req, res) => {
+  res.json(allPrereqs);
 });
+
+// Endpoint for a specific course
+app.get("/api/prereqs/:course", (req, res) => {
+  const courseParam = req.params.course; // e.g., "CSE100"
+  const normalized = courseParam.replace("_", " ").toUpperCase();
+  const prereqData = allPrereqs[normalized];
+
+  if (prereqData) {
+    res.json(prereqData);
+  } else {
+    res.status(404).json({ error: `Prereqs for ${courseParam} not found` });
+  }
+});
+
+
 
 //AI part
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);

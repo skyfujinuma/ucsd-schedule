@@ -1,0 +1,84 @@
+{
+    "major": "B.S. Computer Engineering",
+    "code": "CS25",
+    "catalog_year": "2024-2025",
+    "requirements": {
+      "lower_division": {
+        "units": 68,
+        "courses": [
+          {
+            "type": "one",
+            "courses": ["CSE 8B", "CSE 11"]
+          },
+          "CSE 12",
+          {
+            "type": "one",
+            "courses": ["CSE 29", "ECE 15"]
+          },
+          {
+            "type": "one",
+            "courses": ["CSE 30", "ECE 30"]
+          },
+          "MATH 20A",
+          "MATH 20B",
+          {
+            "type": "one",
+            "courses": ["MATH 20C", "MATH 31BH"]
+          },
+          "MATH 20D",
+          {
+            "type": "one",
+            "courses": ["MATH 18", "MATH 31AH"]
+          },
+          "PHYS 2A",
+          "PHYS 2B",
+          "PHYS 2C",
+          "ECE 35",
+          "ECE 45",
+          {
+            "type": "one",
+            "courses": ["ECE 109", "MATH 11"]
+          }
+        ],
+        "open_electives": {
+          "units": 8,
+          "departments": ["CSE", "ECE"]
+        }
+      },
+      "upper_division": {
+        "units": 64,
+        "core_courses": [
+          "CSE 140",
+          {
+            "type": "one",
+            "courses": ["CSE 141", "CSE 142"]
+          },
+          "ECE 101",
+          "ECE 108",
+          "ECE 111"
+        ],
+        "design_project": {
+          "units": 4,
+          "options": [
+            "CSE 118",
+            "CSE 145",
+            "CSE 147",
+            "CSE 148",
+            "CSE 170",
+            "CSE 176A",
+            "CSE 176E",
+            "ECE 115",
+            "ECE 140B",
+            "ECE 144",
+            "ECE 191",
+            "ECE 196"
+          ]
+        },
+        "upper_division_electives": {
+          "units": 40,
+          "departments": ["CSE", "ECE"]
+        }
+      }
+    }
+  }
+  
