@@ -1,3 +1,5 @@
+/* temporary front end basic schedule logic
+
 import { MajorRequirements } from "../data/majorReqs";
 import { CollegeGEs } from "../data/geReqs";
 import { coursePrereqs } from "../data/prereqs";
@@ -49,3 +51,5 @@ export function suggestCourses({ major, college, completedCourses, preferences }
 
   return urgentCourses;
 }
+
+*/

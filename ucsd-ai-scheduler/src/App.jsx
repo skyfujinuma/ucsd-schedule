@@ -1,16 +1,14 @@
 import { useState } from 'react';
-import { suggestCourses } from './logic/scheduler';
-import { parsePreferences } from './utils/parsePrefs';
 
 function App() {
   const [form, setForm] = useState({
     major: '',
-    college: '',
     completedCourses: '',
-    preferences: ''
   });
 
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState({ unmet: [], sections: [] });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -19,19 +17,35 @@ function App() {
   async function handleSubmit(e) {
     e.preventDefault();
   
-    // Parse preferences string with AI
-    const parsedPrefs = await parsePreferences(form.preferences);
+    const completedCourses = form.completedCourses
+      .split(',')
+      .map(c => c.trim())
+      .filter(c => c);
   
-    // Suggest courses with parsed preferences object
-    const courses = suggestCourses({
-      major: form.major,
-      college: form.college,
-      completedCourses: form.completedCourses.split(',').map(c => c.trim()),
-      preferences: parsedPrefs,
-    });
+    try {
+      const response = await fetch("http://localhost:3001/api/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          major: form.major,
+          completed: completedCourses
+        }),
+      });
   
-    setResults(courses);
+      if (!response.ok) throw new Error("Failed to fetch schedule");
+  
+      const data = await response.json();
+      // Make sure data.unmet exists and is an array
+      setResults({
+        unmet: Array.isArray(data.unmet) ? data.unmet : [],
+        sections: Array.isArray(data.sections) ? data.sections : []
+      });
+    } catch (err) {
+      console.error(err);
+      setResults([]);
+    }
   }
+  
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -47,28 +61,8 @@ function App() {
               onChange={handleChange}
               className="w-full border rounded p-2"
             >
-              <option value ="">Select</option>
-              <option value = "Computer Science">Computer Science</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block mb-1 font-medium">College</label>
-            <select
-              name="college"
-              value={form.college}
-              onChange={handleChange}
-              className="w-full border rounded p-2"
-            >
               <option value="">Select</option>
-              <option value="Warren">Warren</option>
-              <option value="Muir">Muir</option>
-              <option value="Revelle">Revelle</option>
-              <option value="Marshall">Marshall</option>
-              <option value="ERC">ERC</option>
-              <option value="Sixth">Sixth</option>
-              <option value="Seventh">Seventh</option>
-              <option value="Eigth">Eigth</option>
+              <option value="CS25">B.S. Computer Engineering</option>
             </select>
           </div>
 
@@ -83,33 +77,53 @@ function App() {
             />
           </div>
 
-          <div>
-            <label className="block mb-1 font-medium">Preferences</label>
-            <textarea
-              name="preferences"
-              value={form.preferences}
-              onChange={handleChange}
-              className="w-full border rounded p-2"
-              placeholder="e.g. No early morning classes, prefer certain profs"
-            />
-          </div>
-
-          <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-            Generate Schedule
+          <button
+            type="submit"
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            disabled={loading}
+          >
+            {loading ? 'Generating...' : 'Generate Schedule'}
           </button>
         </form>
 
-        {results.length > 0 && (
+        {error && <p className="text-red-500 mt-4">{error}</p>}
+
+        {results.unmet.length > 0 && (
           <div className="mt-6">
             <h2 className="text-xl font-semibold mb-2">Suggested Courses</h2>
             <ul className="list-disc list-inside space-y-1">
-              {results.map((course, idx) => (
-                <li key={idx}>{course}</li>
-              ))}
-    </ul>
-  </div>
-)}
+              {results.unmet.map((course, idx) => {
+                // If it's a string, render directly
+                if (typeof course === "string") return <li key={idx}>{course}</li>;
 
+                // If it's a 'one-of' object
+                if (course.type === "one" && Array.isArray(course.courses)) {
+                  return <li key={idx}>{course.courses.join(" / ")}</li>;
+                }
+
+                // Fallback: stringify any other unexpected object
+                return <li key={idx}>{JSON.stringify(course)}</li>;
+              })}
+            </ul>
+          </div>
+        )}
+
+        {results.sections.length > 0 && (
+          <div className="mt-6">
+            <h2 className="text-xl font-semibold mb-2">Available Sections</h2>
+            <ul className="divide-y divide-gray-200">
+              {results.sections.map((s, idx) => (
+                <li key={idx} className="py-2">
+                  <strong>{s.dept} {s.code} {s.sectionType}</strong>
+                  <div>{s.days.join(', ')} {s.times.start} - {s.times.end}</div>
+                  <div>{s.buildingName} {s.roomNumber}</div>
+                  <div>Prof: {s.professor}</div>
+                  <div>Seats Remaining: {s.seatsRemaining ?? 'N/A'}</div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

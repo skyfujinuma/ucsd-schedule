@@ -5,8 +5,6 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as fs from "fs"; 
 import path from "path";
 
-
-
 const PORT = process.env.PORT || 3001;
 dotenv.config();
 const app = express();
@@ -55,63 +53,43 @@ function parseTimes(timesStr) {
 }
 
 
-app.get("/api/courses", async (req, res) => {
-  try {
-    const rawData = await fs.readFileSync("Classes_Scraper/data/fa25.json", "utf-8");
-    const data = JSON.parse(rawData);
+// Utility to load all on-demand course data at startup
+const COURSE_FILE = "Classes_Scraper/data/fa25.json";
+function loadCourses() {
+  const rawData = fs.readFileSync(COURSE_FILE, "utf-8");
+  const data = JSON.parse(rawData);
 
-    /* option A: store backend data NESTED
-
-    const transformed = {};
-    for (const [dept, courses] of Object.entries(data)) {
-      transformed[dept] = {};
-      for (const [courseNum, sections] of Object.entries(courses)) {
-        transformed[dept][courseNum] = sections.map(section => ({
+  const transformed = [];
+  for (const dept in data) {
+    for (const courseNum in data[dept]) {
+      for (const section of data[dept][courseNum]) {
+        transformed.push({
+          dept,
+          code: courseNum,
           sectionType: section.sectionType,
-          days: parseDays(section.days),
-          times: parseTimes(section.times),
+          days: Array.isArray(section.days) ? section.days : parseDays(section.days),
+          times: typeof section.times === "object" ? section.times : parseTimes(section.times),
           buildingName: section.buildingName,
           roomNumber: section.roomNumber,
           professor: section.professor,
-          seatsRemaining: section.seatsRemaining.trim() === '' ? null : Number(section.seatsRemaining),
-          spaces: section.spaces.trim() === '' ? null : Number(section.spaces),
-        }));
+          seatsRemaining: section.seatsRemaining?.toString().trim() === "" ? null : Number(section.seatsRemaining),
+          spaces: section.spaces?.toString().trim() === "" ? null : Number(section.spaces),
+        });
       }
     }
-    */
-
-    // option B: store backend data FLAT
-    const transformed = [];
-    for (const dept in data) {
-      for (const courseNum in data[dept]) {
-        for (const section of data[dept][courseNum]) {
-          transformed.push({
-            dept,
-            code: courseNum,
-            sectionType: section.sectionType,
-            days: Array.isArray(section.days) ? section.days : parseDays(section.days),
-            times: typeof section.times === "object" ? section.times : parseTimes(section.times),
-            buildingName: section.buildingName,
-            roomNumber: section.roomNumber,
-            professor: section.professor,
-            seatsRemaining: section.seatsRemaining?.toString().trim() === "" ? null : Number(section.seatsRemaining),
-            spaces: section.spaces?.toString().trim() === "" ? null : Number(section.spaces),
-          });
-        }
-      }
-    }
-
-    res.json(transformed);
-
-  } catch (err) {
-    console.error("Error in /api/courses:", err);
-    res.status(500).send("Course data unavailable or parsing failed");
   }
+  console.log("Loaded Courses:", Object.keys(transformed).length);
+  return transformed;
+}
+const allCourses = loadCourses(); 
+
+// Endpoint for all on-demand course data
+app.get("/api/courses", (req, res) => {
+  res.json(allCourses);
 });
 
+// Utility to load all majors at startup into memory
 const majorReqsDir = path.join(process.cwd(), "requirementdata/majorreq");
-
-// Load all majors at startup into memory
 function loadAllMajorReqs() {
   const majors = {};
   const files = fs.readdirSync(majorReqsDir);
@@ -124,15 +102,15 @@ function loadAllMajorReqs() {
   });
   return majors;
 }
-
 const majorReqs = loadAllMajorReqs();
+console.log("Loaded Major Reqs:", Object.keys(majorReqs).length);
 
-// GET all majors (returns an object with all codes)
+// Endpoint for all major requirements
 app.get("/api/major-reqs", (req, res) => {
   res.json(majorReqs);
 });
 
-// GET single major, e.g. /api/major-reqs/CS25
+// Endpoint for single major requirements
 app.get("/api/major-reqs/:major", (req, res) => {
   const major = req.params.major.toUpperCase();
   if (majorReqs[major]) {
@@ -143,10 +121,8 @@ app.get("/api/major-reqs/:major", (req, res) => {
 });
 
 
-//prereqs
+// Utility to load all prereqs at startup into memory
 const PREQ_DIR = path.join(process.cwd(), "requirementdata/prereqdata/data");
-
-// Load all prereqs synchronously
 function loadAllPrereqsSync() {
   const files = fs.readdirSync(PREQ_DIR);
   const allPrereqs = {};
@@ -161,17 +137,15 @@ function loadAllPrereqsSync() {
 
   return allPrereqs;
 }
-
-// Load once at server start
 const allPrereqs = loadAllPrereqsSync();
-console.log("Loaded prereqs:", Object.keys(allPrereqs).length);
+console.log("Loaded Prereqs:", Object.keys(allPrereqs).length);
 
-// Endpoint for all courses
+// Endpoint for all course prereqs
 app.get("/api/prereqs", (req, res) => {
   res.json(allPrereqs);
 });
 
-// Endpoint for a specific course
+// Endpoint for specific course prereq
 app.get("/api/prereqs/:course", (req, res) => {
   const courseParam = req.params.course; // e.g., "CSE100"
   const normalized = courseParam.replace("_", " ").toUpperCase();
@@ -184,9 +158,85 @@ app.get("/api/prereqs/:course", (req, res) => {
   }
 });
 
+// Endpoint for suggesting logic
+app.post("/api/suggest", (req, res) => {
+  const { major, completed } = req.body;
+
+  if (!major || !majorReqs[major]) {
+    return res.status(400).json({ error: "Invalid or missing major" });
+  }
+
+  const unmet = [];
+  const added = new Set(); // to prevent duplicates
+
+  const reqs = majorReqs[major].requirements.lower_division.courses;
+
+  function addCourseWithPrereqs(course) {
+    if (completed.includes(course) || added.has(course)) return;
+  
+    const prereqData = allPrereqs[course];
+    if (prereqData && prereqData.prereqs) {
+      const prereqsArray = Array.isArray(prereqData.prereqs)
+        ? prereqData.prereqs
+        : [prereqData.prereqs];
+  
+      for (const pr of prereqsArray) {
+        if (pr.type === "one") {
+
+          const anyCompleted = pr.courses.some(c => completed.includes(c) || added.has(c));
+          // Only add an option if NONE are completed
+          if (!anyCompleted) {
+            //TODO: make so it displays all that aren't completed
+            // pick first option not completed
+            const option = pr.courses.find(c => !completed.includes(c) && !added.has(c));
+            if (option) addCourseWithPrereqs(option);
+          }
+        } else if (typeof pr === "string") {
+          addCourseWithPrereqs(pr);
+        }
+      }
+    }
+  
+    if (!completed.includes(course) && !added.has(course)) {
+      unmet.push(course);
+      added.add(course);
+    }
+  }
+  
+  for (const item of reqs) {
+    if (typeof item === "string") {
+      addCourseWithPrereqs(item);
+    } else if (item.type === "one") {
+      // Only add an option if NONE are already completed
+      const anyCompleted = item.courses.some(c => completed.includes(c));
+      if (!anyCompleted) {
+        // Add all options individually for section matching
+        for (const option of item.courses) {
+          if (!completed.includes(option)) addCourseWithPrereqs(option);
+        }
+
+        // For front-end display, push a combined string 
+        const oneOfString = item.courses.join(" / ");
+        if (!added.has(oneOfString)) {
+          unmet.push(oneOfString);
+          added.add(oneOfString);
+        }
+      }
+    }
+  }
+  
+  // Match course sections for unmet courses
+  const sections = allCourses.filter(sec =>
+    unmet.includes(`${sec.dept} ${sec.code}`)
+  );
+
+  res.json({ unmet, sections });
+});
 
 
-//AI part
+
+// AI part
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 app.post('/api/preferences', async (req, res) => {
