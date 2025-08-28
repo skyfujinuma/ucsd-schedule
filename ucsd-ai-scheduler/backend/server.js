@@ -166,72 +166,76 @@ app.post("/api/suggest", (req, res) => {
     return res.status(400).json({ error: "Invalid or missing major" });
   }
 
-  const unmet = [];
-  const added = new Set(); // to prevent duplicates
+  const unmet = [];            // raw course codes for section matching
+  const displayUnmet = [];     // structured for frontend
+  const addedRaw = new Set();  // tracks what's in unmet
+  const addedDisplay = new Set(); // tracks what's in displayUnmet
 
   const reqs = majorReqs[major].requirements.lower_division.courses;
 
   function addCourseWithPrereqs(course) {
-    if (completed.includes(course) || added.has(course)) return;
-  
+    if (completed.includes(course) || addedRaw.has(course)) return;
+
     const prereqData = allPrereqs[course];
     if (prereqData && prereqData.prereqs) {
       const prereqsArray = Array.isArray(prereqData.prereqs)
         ? prereqData.prereqs
         : [prereqData.prereqs];
-  
+
       for (const pr of prereqsArray) {
         if (pr.type === "one") {
-
-          const anyCompleted = pr.courses.some(c => completed.includes(c) || added.has(c));
-          // Only add an option if NONE are completed
+          const anyCompleted = pr.courses.some(c => completed.includes(c) || addedRaw.has(c));
           if (!anyCompleted) {
-            //TODO: make so it displays all that aren't completed
-            // pick first option not completed
-            const option = pr.courses.find(c => !completed.includes(c) && !added.has(c));
-            if (option) addCourseWithPrereqs(option);
+            for (const option of pr.courses) {
+              if (!completed.includes(option)) {
+                addCourseWithPrereqs(option);
+              }
+            }
           }
         } else if (typeof pr === "string") {
           addCourseWithPrereqs(pr);
         }
       }
     }
-  
-    if (!completed.includes(course) && !added.has(course)) {
-      unmet.push(course);
-      added.add(course);
-    }
+
+    // only affects raw unmet
+    unmet.push(course);
+    addedRaw.add(course);
   }
-  
+
   for (const item of reqs) {
     if (typeof item === "string") {
       addCourseWithPrereqs(item);
+
+      // separate tracking for display
+      if (!completed.includes(item) && !addedDisplay.has(item)) {
+        displayUnmet.push({ type: "string", course: item });
+        addedDisplay.add(item);
+      }
+
     } else if (item.type === "one") {
-      // Only add an option if NONE are already completed
       const anyCompleted = item.courses.some(c => completed.includes(c));
       if (!anyCompleted) {
-        // Add all options individually for section matching
         for (const option of item.courses) {
-          if (!completed.includes(option)) addCourseWithPrereqs(option);
+          addCourseWithPrereqs(option);
         }
 
-        // For front-end display, push a combined string 
         const oneOfString = item.courses.join(" / ");
-        if (!added.has(oneOfString)) {
-          unmet.push(oneOfString);
-          added.add(oneOfString);
+        if (!addedDisplay.has(oneOfString)) {
+          displayUnmet.push({ type: "one", courses: item.courses });
+          addedDisplay.add(oneOfString);
         }
       }
     }
   }
-  
-  // Match course sections for unmet courses
+
   const sections = allCourses.filter(sec =>
     unmet.includes(`${sec.dept} ${sec.code}`)
   );
 
-  res.json({ unmet, sections });
+  res.json({ unmet: displayUnmet, sections });
 });
+
 
 
 

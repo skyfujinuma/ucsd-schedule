@@ -23,7 +23,7 @@ function App() {
       .filter(c => c);
   
     try {
-      const response = await fetch("http://localhost:3001/api/schedule", {
+      const response = await fetch("http://localhost:3001/api/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -32,7 +32,7 @@ function App() {
         }),
       });
   
-      if (!response.ok) throw new Error("Failed to fetch schedule");
+      if (!response.ok) throw new Error("Failed to fetch suggest");
   
       const data = await response.json();
       // Make sure data.unmet exists and is an array
@@ -44,6 +44,22 @@ function App() {
       console.error(err);
       setResults([]);
     }
+  }
+  function groupSections(sections) {
+    const grouped = [];
+    let currentLecture = null;
+  
+    for (const sec of sections) {
+      if (sec.sectionType === "LE") {
+        currentLecture = { lecture: sec, discussions: [], labs: [] };
+        grouped.push(currentLecture);
+      } else if (currentLecture) {
+        if (sec.sectionType === "DI") currentLecture.discussions.push(sec);
+        if (sec.sectionType === "LA") currentLecture.labs.push(sec);
+      }
+    }
+  
+    return grouped;
   }
   
 
@@ -93,15 +109,12 @@ function App() {
             <h2 className="text-xl font-semibold mb-2">Suggested Courses</h2>
             <ul className="list-disc list-inside space-y-1">
               {results.unmet.map((course, idx) => {
-                // If it's a string, render directly
-                if (typeof course === "string") return <li key={idx}>{course}</li>;
-
-                // If it's a 'one-of' object
-                if (course.type === "one" && Array.isArray(course.courses)) {
+                if (course.type === "string") {
+                  return <li key={idx}>{course.course}</li>;   
+                }
+                if (course.type === "one") {
                   return <li key={idx}>{course.courses.join(" / ")}</li>;
                 }
-
-                // Fallback: stringify any other unexpected object
                 return <li key={idx}>{JSON.stringify(course)}</li>;
               })}
             </ul>
@@ -112,18 +125,51 @@ function App() {
           <div className="mt-6">
             <h2 className="text-xl font-semibold mb-2">Available Sections</h2>
             <ul className="divide-y divide-gray-200">
-              {results.sections.map((s, idx) => (
-                <li key={idx} className="py-2">
-                  <strong>{s.dept} {s.code} {s.sectionType}</strong>
-                  <div>{s.days.join(', ')} {s.times.start} - {s.times.end}</div>
-                  <div>{s.buildingName} {s.roomNumber}</div>
-                  <div>Prof: {s.professor}</div>
-                  <div>Seats Remaining: {s.seatsRemaining ?? 'N/A'}</div>
+              {groupSections(results.sections).map((group, idx) => (
+                <li key={idx} className="py-4">
+                  <div className="mb-2">
+                    <strong>
+                      {group.lecture.dept} {group.lecture.code} Lecture
+                    </strong>
+                    <div>{group.lecture.days.join(', ')} {group.lecture.times.start} - {group.lecture.times.end}</div>
+                    <div>{group.lecture.buildingName} {group.lecture.roomNumber}</div>
+                    <div>Prof: {group.lecture.professor}</div>
+                    <div>Seats Remaining: {group.lecture.seatsRemaining ?? 'N/A'}</div>
+                  </div>
+
+                  {group.discussions.length > 0 && (
+                    <div className="ml-4">
+                      <strong>Discussions:</strong>
+                      <ul className="list-disc ml-6">
+                        {group.discussions.map((d, i) => (
+                          <li key={i}>
+                            {d.days.join(', ')} {d.times.start} - {d.times.end} ({d.buildingName} {d.roomNumber})
+                            <span className="ml-2"> Seats Remaining: {d.seatsRemaining ?? "N/A"}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {group.labs.length > 0 && (
+                    <div className="ml-4 mt-2">
+                      <strong>Labs:</strong>
+                      <ul className="list-disc ml-6">
+                        {group.labs.map((l, i) => (
+                          <li key={i}>
+                            {l.days.join(', ')} {l.times.start} - {l.times.end} ({l.buildingName} {l.roomNumber})
+                            <span className="ml-2">Seats Remaining: {l.seatsRemaining ?? "N/A"}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
           </div>
         )}
+
       </div>
     </div>
   );
