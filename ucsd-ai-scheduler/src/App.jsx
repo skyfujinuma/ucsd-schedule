@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 function App() {
   const [form, setForm] = useState({
@@ -6,7 +6,7 @@ function App() {
     completedCourses: '',
   });
 
-  
+  const [majors, setMajors] = useState([]);
   const [results, setResults] = useState({ 
     unmet: [], 
     urgent: [],
@@ -15,6 +15,27 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
+  useEffect(() => {
+    async function fetchMajors() {
+      try {
+        const response = await fetch("http://localhost:3001/api/major-reqs");
+        if (!response.ok) throw new Error("Failed to fetch majors");
+        const data = await response.json();
+
+        // Transform object to array of { code, name } for dropdown
+        const majorList = Object.values(data).map(major => ({
+          code: major.code,
+          name: major.major
+        }));
+        setMajors(majorList);
+      } catch (err) {
+        console.error(err);
+        setMajors([]);
+      }
+    }
+    fetchMajors();
+  }, []);
+
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
@@ -22,10 +43,18 @@ function App() {
   async function handleSubmit(e) {
     e.preventDefault();
   
+    if (!form.major) {
+      setError("Please select a major.");
+      return;
+    }
+
     const completedCourses = form.completedCourses
       .split(',')
       .map(c => c.trim())
       .filter(c => c);
+
+      setLoading(true);
+      setError(null);
   
       try {
         const response = await fetch("http://localhost:3001/api/suggest", {
@@ -40,9 +69,6 @@ function App() {
         if (!response.ok) throw new Error("Failed to fetch suggest");
       
         const data = await response.json();
-
-        console.log("Suggest API response:", data);
-
         setResults({
           urgent: Array.isArray(data.urgent) ? data.urgent : [],
           future: Array.isArray(data.future) ? data.future : [],
@@ -51,6 +77,8 @@ function App() {
       } catch (err) {
         console.error(err);
         setResults({ urgent: [], future: [], sections: [] });
+      } finally {
+        setLoading(false);
       }
   }
   function groupSections(sections) {
@@ -101,11 +129,11 @@ function App() {
             <select
               name="major"
               value={form.major}
-              onChange={handleChange}
+              onChange={e => setForm({ ...form, major: e.target.value })}
               className="w-full border rounded p-2"
             >
               <option value="">Select</option>
-              <option value="CS25">B.S. Computer Engineering</option>
+              {majors.map(m => (<option key={m.code} value={m.code}>{m.name}</option>))}
             </select>
           </div>
 
