@@ -158,7 +158,7 @@ app.get("/api/prereqs/:course", (req, res) => {
   }
 });
 
-// Endpoint for suggesting logic
+//Endpoint for suggest
 app.post("/api/suggest", (req, res) => {
   const { major, completed } = req.body;
 
@@ -166,10 +166,12 @@ app.post("/api/suggest", (req, res) => {
     return res.status(400).json({ error: "Invalid or missing major" });
   }
 
-  const unmet = [];            // raw course codes for section matching
-  const displayUnmet = [];     // structured for frontend
-  const addedRaw = new Set();  // tracks what's in unmet
-  const addedDisplay = new Set(); // tracks what's in displayUnmet
+  const unmet = [];             // raw course codes for section matching
+  const urgent = [];            // courses ready to take
+  const future = [];            // courses with missing prereqs
+  const addedRaw = new Set();   // tracks what's in unmet
+  const addedUrgent = new Set(); // tracks urgent
+  const addedFuture = new Set(); // tracks future
 
   const reqs = majorReqs[major].requirements.lower_division.courses;
 
@@ -177,6 +179,8 @@ app.post("/api/suggest", (req, res) => {
     if (completed.includes(course) || addedRaw.has(course)) return;
 
     const prereqData = allPrereqs[course];
+    let missingPrereqs = [];
+
     if (prereqData && prereqData.prereqs) {
       const prereqsArray = Array.isArray(prereqData.prereqs)
         ? prereqData.prereqs
@@ -189,30 +193,36 @@ app.post("/api/suggest", (req, res) => {
             for (const option of pr.courses) {
               if (!completed.includes(option)) {
                 addCourseWithPrereqs(option);
+                missingPrereqs.push(option);
               }
             }
           }
         } else if (typeof pr === "string") {
           addCourseWithPrereqs(pr);
+          if (!completed.includes(pr)) missingPrereqs.push(pr);
         }
       }
     }
 
-    // only affects raw unmet
     unmet.push(course);
     addedRaw.add(course);
+
+    if (missingPrereqs.length === 0) {
+      if (!addedUrgent.has(course)) {
+        urgent.push({ type: "string", course });
+        addedUrgent.add(course);
+      }
+    } else {
+      if (!addedFuture.has(course)) {
+        future.push({ type: "string", course, missingPrereqs });
+        addedFuture.add(course);
+      }
+    }
   }
 
   for (const item of reqs) {
     if (typeof item === "string") {
       addCourseWithPrereqs(item);
-
-      // separate tracking for display
-      if (!completed.includes(item) && !addedDisplay.has(item)) {
-        displayUnmet.push({ type: "string", course: item });
-        addedDisplay.add(item);
-      }
-
     } else if (item.type === "one") {
       const anyCompleted = item.courses.some(c => completed.includes(c));
       if (!anyCompleted) {
@@ -221,9 +231,20 @@ app.post("/api/suggest", (req, res) => {
         }
 
         const oneOfString = item.courses.join(" / ");
-        if (!addedDisplay.has(oneOfString)) {
-          displayUnmet.push({ type: "one", courses: item.courses });
-          addedDisplay.add(oneOfString);
+        const canTake = item.courses.some(c => {
+          const prereqs = allPrereqs[c]?.prereqs || [];
+          if (Array.isArray(prereqs) && prereqs.length === 0) return true;
+          return Array.isArray(prereqs)
+            ? prereqs.every(pr => completed.includes(pr))
+            : completed.includes(prereqs);
+        });
+
+        if (canTake && !addedUrgent.has(oneOfString)) {
+          urgent.push({ type: "one", courses: item.courses });
+          addedUrgent.add(oneOfString);
+        } else if (!canTake && !addedFuture.has(oneOfString)) {
+          future.push({ type: "one", courses: item.courses });
+          addedFuture.add(oneOfString);
         }
       }
     }
@@ -233,10 +254,8 @@ app.post("/api/suggest", (req, res) => {
     unmet.includes(`${sec.dept} ${sec.code}`)
   );
 
-  res.json({ unmet: displayUnmet, sections });
+  res.json({ urgent, future, sections });
 });
-
-
 
 
 // AI part

@@ -6,7 +6,12 @@ function App() {
     completedCourses: '',
   });
 
-  const [results, setResults] = useState({ unmet: [], sections: [] });
+  
+  const [results, setResults] = useState({ 
+    unmet: [], 
+    urgent: [],
+    sections: [],
+    future: [], });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
@@ -22,28 +27,31 @@ function App() {
       .map(c => c.trim())
       .filter(c => c);
   
-    try {
-      const response = await fetch("http://localhost:3001/api/suggest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          major: form.major,
-          completed: completedCourses
-        }),
-      });
-  
-      if (!response.ok) throw new Error("Failed to fetch suggest");
-  
-      const data = await response.json();
-      // Make sure data.unmet exists and is an array
-      setResults({
-        unmet: Array.isArray(data.unmet) ? data.unmet : [],
-        sections: Array.isArray(data.sections) ? data.sections : []
-      });
-    } catch (err) {
-      console.error(err);
-      setResults([]);
-    }
+      try {
+        const response = await fetch("http://localhost:3001/api/suggest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            major: form.major,
+            completed: completedCourses
+          }),
+        });
+      
+        if (!response.ok) throw new Error("Failed to fetch suggest");
+      
+        const data = await response.json();
+
+        console.log("Suggest API response:", data);
+        
+        setResults({
+          urgent: Array.isArray(data.urgent) ? data.urgent : [],
+          future: Array.isArray(data.future) ? data.future : [],
+          sections: Array.isArray(data.sections) ? data.sections : []
+        });
+      } catch (err) {
+        console.error(err);
+        setResults({ urgent: [], future: [], sections: [] });
+      }
   }
   function groupSections(sections) {
     const grouped = [];
@@ -62,6 +70,25 @@ function App() {
     return grouped;
   }
   
+  function renderCourseItem(item) {
+    if (!item) return "Unknown";
+  
+    if (item.type === "string") {
+      const courseName = typeof item.course === "string" 
+        ? item.course 
+        : JSON.stringify(item.course); // fallback if it's an object
+  
+      return item.missingPrereqs?.length
+        ? `${courseName} (needs: ${item.missingPrereqs.join(", ")})`
+        : courseName;
+    }
+  
+    if (item.type === "one" && Array.isArray(item.courses)) {
+      return item.courses.join(" / ");
+    }
+  
+    return "Unknown course format";
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
@@ -104,24 +131,31 @@ function App() {
 
         {error && <p className="text-red-500 mt-4">{error}</p>}
 
-        {results.unmet.length > 0 && (
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-2">Suggested Courses</h2>
-            <ul className="list-disc list-inside space-y-1">
-              {results.unmet.map((course, idx) => {
-                if (course.type === "string") {
-                  return <li key={idx}>{course.course}</li>;   
-                }
-                if (course.type === "one") {
-                  return <li key={idx}>{course.courses.join(" / ")}</li>;
-                }
-                return <li key={idx}>{JSON.stringify(course)}</li>;
-              })}
-            </ul>
-          </div>
-        )}
+        <div className="mt-6">
+          <h2 className="text-xl font-semibold">Urgent Courses</h2>
+          <ul className="list-disc ml-6">
+            {results.urgent.length > 0 ? (
+              results.urgent.map((item, idx) => (
+                <li key={idx}>{renderCourseItem(item)}</li>
+              ))
+            ) : (
+              <li>None</li>
+            )}
+          </ul>
 
-        {results.sections.length > 0 && (
+          <h2 className="text-xl font-semibold mt-4">Future Courses</h2>
+          <ul className="list-disc ml-6">
+            {results.future.length > 0 ? (
+              results.future.map((item, idx) => (
+                <li key={idx}>{renderCourseItem(item)}</li>
+              ))
+            ) : (
+              <li>None</li>
+            )}
+          </ul>
+        </div>
+
+        {results.sections?.length > 0 && (
           <div className="mt-6">
             <h2 className="text-xl font-semibold mb-2">Available Sections</h2>
             <ul className="divide-y divide-gray-200">
