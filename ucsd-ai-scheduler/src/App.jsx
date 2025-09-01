@@ -42,7 +42,7 @@ function App() {
         const data = await response.json();
 
         console.log("Suggest API response:", data);
-        
+
         setResults({
           urgent: Array.isArray(data.urgent) ? data.urgent : [],
           future: Array.isArray(data.future) ? data.future : [],
@@ -131,28 +131,32 @@ function App() {
 
         {error && <p className="text-red-500 mt-4">{error}</p>}
 
-        <div className="mt-6">
-          <h2 className="text-xl font-semibold">Urgent Courses</h2>
-          <ul className="list-disc ml-6">
-            {results.urgent.length > 0 ? (
-              results.urgent.map((item, idx) => (
-                <li key={idx}>{renderCourseItem(item)}</li>
-              ))
-            ) : (
-              <li>None</li>
-            )}
-          </ul>
+        <div className="mt-6 grid grid-cols-2 gap-6">
+          <div>
+            <h2 className="text-xl font-semibold">Urgent Courses</h2>
+            <ul className="list-disc ml-6">
+              {results.urgent.length > 0 ? (
+                results.urgent.map((item, idx) => (
+                  <li key={idx}>{renderCourseItem(item)}</li>
+                ))
+              ) : (
+                <li>None</li>
+              )}
+            </ul>
+          </div>
 
-          <h2 className="text-xl font-semibold mt-4">Future Courses</h2>
-          <ul className="list-disc ml-6">
-            {results.future.length > 0 ? (
-              results.future.map((item, idx) => (
-                <li key={idx}>{renderCourseItem(item)}</li>
-              ))
-            ) : (
-              <li>None</li>
-            )}
-          </ul>
+          <div>
+            <h2 className="text-xl font-semibold">Future Courses</h2>
+            <ul className="list-disc ml-6">
+              {results.future.length > 0 ? (
+                results.future.map((item, idx) => (
+                  <li key={idx}>{renderCourseItem(item)}</li>
+                ))
+              ) : (
+                <li>None</li>
+              )}
+            </ul>
+          </div>
         </div>
 
         {results.sections?.length > 0 && (
