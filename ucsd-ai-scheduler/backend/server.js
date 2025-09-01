@@ -226,25 +226,29 @@ app.post("/api/suggest", (req, res) => {
     } else if (item.type === "one") {
       const anyCompleted = item.courses.some(c => completed.includes(c));
       if (!anyCompleted) {
-        for (const option of item.courses) {
-          addCourseWithPrereqs(option);
-        }
-
-        const oneOfString = item.courses.join(" / ");
-        const canTake = item.courses.some(c => {
+        // Check which courses can be taken
+        const eligibleCourses = item.courses.filter(c => {
           const prereqs = allPrereqs[c]?.prereqs || [];
-          if (Array.isArray(prereqs) && prereqs.length === 0) return true;
+          if (!prereqs || prereqs.length === 0) return true;
           return Array.isArray(prereqs)
             ? prereqs.every(pr => completed.includes(pr))
             : completed.includes(prereqs);
         });
-
-        if (canTake && !addedUrgent.has(oneOfString)) {
-          urgent.push({ type: "one", courses: item.courses });
-          addedUrgent.add(oneOfString);
-        } else if (!canTake && !addedFuture.has(oneOfString)) {
-          future.push({ type: "one", courses: item.courses });
-          addedFuture.add(oneOfString);
+  
+        if (eligibleCourses.length > 0) {
+          // Only add as urgent if at least one course is ready
+          const key = item.courses.join(" / ");
+          if (!addedUrgent.has(key)) {
+            urgent.push({ type: "one", courses: item.courses });
+            addedUrgent.add(key);
+          }
+        } else {
+          // All blocked by prereqs -> future
+          const key = item.courses.join(" / ");
+          if (!addedFuture.has(key)) {
+            future.push({ type: "one", courses: item.courses });
+            addedFuture.add(key);
+          }
         }
       }
     }
