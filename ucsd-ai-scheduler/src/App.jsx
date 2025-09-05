@@ -114,6 +114,10 @@ function App() {
     if (item.type === "one" && Array.isArray(item.courses)) {
       return item.courses.join(" / ");
     }
+    
+    if (item.type === "at_least" && Array.isArray(item.courses)) {
+      return `Take at least ${item.count} of: ${item.courses.join(", ")}`;
+    }
   
     return "Unknown course format";
   }

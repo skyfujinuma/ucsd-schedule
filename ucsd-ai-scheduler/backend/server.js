@@ -173,7 +173,10 @@ app.post("/api/suggest", (req, res) => {
   const addedUrgent = new Set(); // tracks urgent
   const addedFuture = new Set(); // tracks future
 
-  const reqs = majorReqs[major].requirements.lower_division.courses;
+  const reqs = [
+    ...majorReqs[major].requirements.lower_division.courses,
+    ...majorReqs[major].requirements.upper_division.courses
+  ];
 
   function addCourseWithPrereqs(course) {
     if (completed.includes(course) || addedRaw.has(course)) return;
@@ -200,7 +203,7 @@ app.post("/api/suggest", (req, res) => {
         } else if (typeof pr === "string") {
           addCourseWithPrereqs(pr);
           if (!completed.includes(pr)) missingPrereqs.push(pr);
-        }
+        } 
       }
     }
 
@@ -224,29 +227,91 @@ app.post("/api/suggest", (req, res) => {
     if (typeof item === "string") {
       addCourseWithPrereqs(item);
     } else if (item.type === "one") {
+      // Skip the whole group if you already completed any of the courses
       const anyCompleted = item.courses.some(c => completed.includes(c));
       if (!anyCompleted) {
-        // Check which courses can be taken
-        const eligibleCourses = item.courses.filter(c => {
+        const eligibleCourses = [];
+        const blockedCourses = [];
+    
+        // Check each course individually for prereqs
+        item.courses.forEach(c => {
+          const prereqs = allPrereqs[c]?.prereqs || [];
+          let ready = true;
+    
+          if (prereqs && prereqs.length > 0) {
+            const prereqArray = Array.isArray(prereqs) ? prereqs : [prereqs];
+            for (const pr of prereqArray) {
+              if (pr.type === "one") {
+                const anyPrCompleted = pr.courses.some(pc => completed.includes(pc));
+                if (!anyPrCompleted) {
+                  ready = false;
+                  break;
+                }
+              } else if (typeof pr === "string") {
+                if (!completed.includes(pr)) {
+                  ready = false;
+                  break;
+                }
+              }
+            }
+          }
+    
+          if (ready) eligibleCourses.push(c);
+          else blockedCourses.push(c);
+        });
+    
+        // Add eligible couses to blocked
+        if (eligibleCourses.length > 0) {
+          const key = eligibleCourses.join(" / ");
+          if (!addedUrgent.has(key)) {
+            urgent.push({ type: "one", courses: eligibleCourses});
+            addedUrgent.add(key);
+          }
+        }
+    
+        // Add blocked courses to future
+        if (blockedCourses.length > 0) {
+          const key = blockedCourses.join(" / ");
+          if (!addedFuture.has(key)) {
+            future.push({ type: "one", courses: blockedCourses });
+            addedFuture.add(key);
+          }
+        }
+      }
+    } else if (item.type === "at_least") {
+      const taken = item.courses.filter(c => completed.includes(c));
+      if (taken.length < item.count) {
+        const needed = item.count - taken.length;
+        const remaining = item.courses.filter(c => !completed.includes(c));
+    
+        // Check if at least one remaining course is actually eligible right now
+        const eligibleCourses = remaining.filter(c => {
           const prereqs = allPrereqs[c]?.prereqs || [];
           if (!prereqs || prereqs.length === 0) return true;
           return Array.isArray(prereqs)
             ? prereqs.every(pr => completed.includes(pr))
             : completed.includes(prereqs);
         });
-  
-        if (eligibleCourses.length > 0) {
-          // Only add as urgent if at least one course is ready
-          const key = item.courses.join(" / ");
+    
+        if (eligibleCourses.length >= 0) {
+          const key = `at_least_${item.count}_${item.courses.join(" / ")}`;
           if (!addedUrgent.has(key)) {
-            urgent.push({ type: "one", courses: item.courses });
+            urgent.push({
+              type: "at_least",
+              count: needed,
+              courses: item.courses,
+              eligible: eligibleCourses
+            });
             addedUrgent.add(key);
           }
         } else {
-          // All blocked by prereqs -> future
-          const key = item.courses.join(" / ");
+          const key = `at_least_${item.count}_${item.courses.join(" / ")}`;
           if (!addedFuture.has(key)) {
-            future.push({ type: "one", courses: item.courses });
+            future.push({
+              type: "at_least",
+              count: needed,
+              courses: item.courses
+            });
             addedFuture.add(key);
           }
         }
