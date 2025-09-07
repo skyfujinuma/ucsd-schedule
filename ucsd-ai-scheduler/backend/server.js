@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3001;
 dotenv.config();
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Utility to split days string like "TuTh" => ["Tu", "Th"]
 function parseDays(daysStr) {
@@ -55,8 +55,26 @@ function parseTimes(timesStr) {
 
 // Utility to load all on-demand course data at startup
 const COURSE_FILE = "Classes_Scraper/data/fa25.json";
+const COURSE_FILE_WITH_RATINGS = "Classes_Scraper/data/fa25_with_ratings.json";
+const COURSE_FILE_WITH_CSE_MATH_RATINGS = "Classes_Scraper/data/fa25_with_cse_math_ratings.json";
+const COURSE_FILE_WITH_INDIVIDUAL_RATINGS = "Classes_Scraper/data/fa25_with_individual_professor_ratings.json";
 function loadCourses() {
-  const rawData = fs.readFileSync(COURSE_FILE, "utf-8");
+  // Try to load enhanced data with ratings first, fallback to original data
+  let courseFile = COURSE_FILE;
+  if (fs.existsSync(COURSE_FILE_WITH_INDIVIDUAL_RATINGS)) {
+    courseFile = COURSE_FILE_WITH_INDIVIDUAL_RATINGS;
+    console.log("Loading course data with individual professor ratings...");
+  } else if (fs.existsSync(COURSE_FILE_WITH_CSE_MATH_RATINGS)) {
+    courseFile = COURSE_FILE_WITH_CSE_MATH_RATINGS;
+    console.log("Loading course data with CSE/MATH professor ratings...");
+  } else if (fs.existsSync(COURSE_FILE_WITH_RATINGS)) {
+    courseFile = COURSE_FILE_WITH_RATINGS;
+    console.log("Loading course data with professor ratings...");
+  } else {
+    console.log("Loading original course data (no ratings available)...");
+  }
+  
+  const rawData = fs.readFileSync(courseFile, "utf-8");
   const data = JSON.parse(rawData);
 
   const transformed = [];
@@ -74,6 +92,8 @@ function loadCourses() {
           professor: section.professor,
           seatsRemaining: section.seatsRemaining?.toString().trim() === "" ? null : Number(section.seatsRemaining),
           spaces: section.spaces?.toString().trim() === "" ? null : Number(section.spaces),
+          // Add professor rating data if available
+          professor_rating: section.professor_rating || null,
         });
       }
     }
@@ -495,14 +515,41 @@ app.post('/api/ai-filter-courses', async (req, res) => {
   const { userQuery, courses, completedCourses, major } = req.body;
 
   // Prepare course data for the AI
-  const courseData = courses.map(course => ({
-    code: course.course || course.courses?.[0] || 'Unknown',
-    title: course.title || 'Unknown',
-    units: course.units || 'Unknown',
-    description: course.description || 'No description available',
-    type: course.type || 'string',
-    courses: course.courses || [course.course]
-  }));
+  const courseData = courses.map(course => {
+    // Handle both section data (dept + code) and requirement data (course/courses)
+    let courseCode = 'Unknown';
+    if (course.dept && course.code) {
+      courseCode = `${course.dept} ${course.code}`;
+    } else if (course.course) {
+      courseCode = course.course;
+    } else if (course.courses && course.courses[0]) {
+      courseCode = course.courses[0];
+    }
+    
+    const courseInfo = {
+      code: courseCode,
+      title: course.title || 'Unknown',
+      units: course.units || 'Unknown',
+      description: course.description || 'No description available',
+      type: course.type || 'string',
+      courses: course.courses || [courseCode],
+      professor: course.professor || 'TBA',
+      sectionType: course.sectionType || 'Unknown'
+    };
+    
+    // Add professor rating information if available
+    if (course.professor_rating) {
+      courseInfo.professor_rating = {
+        rating: course.professor_rating.rating,
+        difficulty: course.professor_rating.difficulty,
+        num_ratings: course.professor_rating.num_ratings,
+        would_take_again: course.professor_rating.would_take_again,
+        department: course.professor_rating.department
+      };
+    }
+    
+    return courseInfo;
+  });
 
   const prompt = `
 You are an academic advisor helping a ${major} major student select courses.
@@ -520,6 +567,10 @@ TASK: Filter and rank the available courses based on the user's request. Conside
 3. Course difficulty and workload
 4. Career/academic goals alignment
 5. Course sequencing and timing
+6. Professor ratings and quality (if available) - ratings are 1-5 scale, higher is better
+7. Professor difficulty ratings and "would take again" percentages
+
+IMPORTANT: When users ask for "good professor ratings" or "highly rated professors", prioritize courses with professor_rating.rating >= 4.0. When they ask for "easy courses", consider both course difficulty and professor difficulty ratings.
 
 RESPONSE FORMAT (JSON only):
 {
@@ -529,7 +580,14 @@ RESPONSE FORMAT (JSON only):
       "relevance_score": 0.9,
       "reason": "Core machine learning course, perfect for AI focus",
       "prerequisites_met": true,
-      "difficulty": "intermediate"
+      "difficulty": "intermediate",
+      "professor": "Professor Name",
+      "professor_rating": {
+        "rating": 4.2,
+        "difficulty": 3.1,
+        "num_ratings": 89,
+        "would_take_again": 78.5
+      }
     }
   ],
   "summary": "Found X courses that match your request",

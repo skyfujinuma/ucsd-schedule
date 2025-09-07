@@ -1,5 +1,6 @@
 import json
 import re
+import time
 
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
@@ -11,6 +12,14 @@ from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.support import expected_conditions as EC
+
+# Import RateMyProfessor API
+try:
+    import ratemyprofessor
+    RMP_AVAILABLE = True
+except ImportError:
+    print("RateMyProfessor API not available. Install with: pip install RateMyProfessorAPI")
+    RMP_AVAILABLE = False
 
 
 URL = "https://act.ucsd.edu/scheduleOfClasses/scheduleOfClassesStudentResult.htm"
@@ -156,7 +165,19 @@ def open_browser():
 
 def uploadData(data, file):
     dataJSON = data.getData()
-
+    
+    # Enhance data with professor ratings if available
+    if RMP_AVAILABLE:
+        print("Enhancing course data with professor ratings...")
+        enhanced_data = enhance_course_data_with_ratings(dataJSON)
+        
+        # Save enhanced data
+        enhanced_file = file.replace('.json', '_with_ratings.json')
+        with open(enhanced_file, "w") as outfile:
+            json.dump(enhanced_data, outfile, indent=2)
+        print(f"Enhanced data saved to {enhanced_file}")
+    
+    # Save original data
     with open(file, "w") as outfile:
         json.dump(dataJSON, outfile)
 
@@ -287,4 +308,114 @@ class Section:
         )
 
 
-open_browser()
+# RateMyProfessor Integration Functions
+def get_professor_rating(professor_name, school_name="University of California San Diego"):
+    """
+    Get professor rating from RateMyProfessor
+    
+    Args:
+        professor_name (str): Full name of the professor
+        school_name (str): Name of the school (default: UCSD)
+    
+    Returns:
+        dict: Professor rating data or None if not found
+    """
+    if not RMP_AVAILABLE:
+        return None
+    
+    try:
+        # Get school object
+        school = ratemyprofessor.get_school_by_name(school_name)
+        if not school:
+            print(f"School '{school_name}' not found on RateMyProfessor")
+            return None
+        
+        # Get professor object
+        professor = ratemyprofessor.get_professor_by_school_and_name(school, professor_name)
+        if not professor:
+            print(f"Professor '{professor_name}' not found at {school_name}")
+            return None
+        
+        # Return rating data
+        return {
+            "name": professor.name,
+            "rating": professor.rating,
+            "difficulty": professor.difficulty,
+            "num_ratings": professor.num_ratings,
+            "would_take_again": professor.would_take_again,
+            "department": professor.department
+        }
+    
+    except Exception as e:
+        print(f"Error getting rating for {professor_name}: {e}")
+        return None
+
+
+def enhance_course_data_with_ratings(course_data):
+    """
+    Enhance course data with professor ratings
+    
+    Args:
+        course_data (dict): Course data organized by department and course number
+    
+    Returns:
+        dict: Enhanced course data with professor ratings
+    """
+    if not RMP_AVAILABLE:
+        print("RateMyProfessor API not available. Skipping rating enhancement.")
+        return course_data
+    
+    enhanced_data = {}
+    professor_cache = {}  # Cache to avoid duplicate API calls
+    
+    for dept in course_data:
+        enhanced_data[dept] = {}
+        for course_num in course_data[dept]:
+            enhanced_data[dept][course_num] = []
+            
+            for section in course_data[dept][course_num]:
+                # Create a copy of the section
+                enhanced_section = dict(section) if isinstance(section, dict) else section
+                
+                # Get professor name
+                professor_name = enhanced_section.get('professor', '').strip()
+                
+                if professor_name and professor_name != 'TBA':
+                    # Check cache first
+                    if professor_name in professor_cache:
+                        enhanced_section['professor_rating'] = professor_cache[professor_name]
+                    else:
+                        # Get rating from RateMyProfessor
+                        rating_data = get_professor_rating(professor_name)
+                        enhanced_section['professor_rating'] = rating_data
+                        professor_cache[professor_name] = rating_data
+                        
+                        # Add small delay to be respectful to the API
+                        time.sleep(0.5)
+                else:
+                    enhanced_section['professor_rating'] = None
+                
+                enhanced_data[dept][course_num].append(enhanced_section)
+    
+    return enhanced_data
+
+
+def save_enhanced_data(data, filename="data/fa25_with_ratings.json"):
+    """
+    Save enhanced course data with ratings to file
+    
+    Args:
+        data (list): Enhanced course data
+        filename (str): Output filename
+    """
+    try:
+        with open(filename, 'w') as f:
+            json.dump(data, f, indent=2)
+        print(f"Enhanced data saved to {filename}")
+    except Exception as e:
+        print(f"Error saving enhanced data: {e}")
+
+
+# Only run if this script is executed directly
+if __name__ == "__main__":
+    open_browser()

@@ -124,19 +124,40 @@ function App() {
     setAiLoading(true);
     try {
       const completedCourses = form.completedCourses.split(',').map(c => c.trim()).filter(c => c);
-      const allCourses = [...results.urgent, ...results.future];
+      
+      // Filter sections to only include courses from urgent requirements
+      const relevantCourseCodes = new Set();
+      
+      // Add only urgent course codes
+      results.urgent.forEach(item => {
+        if (item.type === "one") {
+          item.courses.forEach(course => relevantCourseCodes.add(course));
+        } else if (item.type === "string") {
+          relevantCourseCodes.add(item.course);
+        } else if (item.type === "at_least") {
+          item.courses.forEach(course => relevantCourseCodes.add(course));
+        }
+      });
+      
+      // Filter sections to only include relevant courses
+      const relevantSections = (results.sections || []).filter(section => {
+        const courseCode = `${section.dept} ${section.code}`;
+        return relevantCourseCodes.has(courseCode);
+      });
+      
+      console.log(`📊 Sending ${relevantSections.length} urgent course sections to AI (from ${results.sections?.length || 0} total sections)`);
       
       const response = await fetch("http://localhost:3001/api/ai-filter-courses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userQuery: aiQuery,
-          courses: allCourses,
+          courses: relevantSections,
           completedCourses,
           major: form.major
         })
       });
-
+    
       if (!response.ok) throw new Error("Failed to filter courses with AI");
       const data = await response.json();
       setAiResults(data);
@@ -164,6 +185,31 @@ function App() {
     }
   
     return grouped;
+  }
+
+  function formatProfessorWithRating(professor, professorRating) {
+    if (!professorRating) {
+      return professor;
+    }
+    
+    const rating = professorRating.rating;
+    const difficulty = professorRating.difficulty;
+    const numRatings = professorRating.num_ratings;
+    
+    // Create star rating display
+    const stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
+    
+    return (
+      <span>
+        {professor} 
+        <span className="text-sm text-gray-600 ml-2">
+          {stars} ({rating}/5) 
+          <span className="text-xs text-gray-500 ml-1">
+            Difficulty: {difficulty}/5 • {numRatings} ratings
+          </span>
+        </span>
+      </span>
+    );
   }
 
   function renderCourseItem(item) {
@@ -219,7 +265,7 @@ function App() {
                             Lecture: {group.lecture.days.join(", ")}{" "}
                             {group.lecture.times.start} - {group.lecture.times.end}
                             {" | "}
-                            Prof: {group.lecture.professor}{" "}
+                            Prof: {formatProfessorWithRating(group.lecture.professor, group.lecture.professor_rating)}{" "}
                             (Seats: {group.lecture.seatsRemaining ?? "N/A"})
                           </div>
                           {group.discussions.length > 0 && (
@@ -272,7 +318,7 @@ function App() {
                   <div>
                     Lecture: {group.lecture.days.join(", ")}{" "}
                     {group.lecture.times.start} - {group.lecture.times.end} |{" "}
-                    Prof: {group.lecture.professor} (Seats: {group.lecture.seatsRemaining ?? "N/A"})
+                    Prof: {formatProfessorWithRating(group.lecture.professor, group.lecture.professor_rating)} (Seats: {group.lecture.seatsRemaining ?? "N/A"})
                   </div>
                 )}
 
