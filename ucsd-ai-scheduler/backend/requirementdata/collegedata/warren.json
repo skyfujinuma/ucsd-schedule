@@ -1,0 +1,16 @@
+{
+    "college": "Warren",
+    "catalog_year": "2024-2025",
+    "requirements": {
+      "courses": [
+        "WCWP 10A",
+        "WCWP 10B",
+        {
+          "type": "one",
+          "courses": [
+            ["PHIL 27", "PHIL 28", "POLI 27", "POLI 28"]
+          ]
+        }
+      ]
+    }
+  }

@@ -105,6 +105,7 @@ function loadAllMajorReqs() {
 const majorReqs = loadAllMajorReqs();
 console.log("Loaded Major Reqs:", Object.keys(majorReqs).length);
 
+
 // Endpoint for all major requirements
 app.get("/api/major-reqs", (req, res) => {
   res.json(majorReqs);
@@ -158,9 +159,52 @@ app.get("/api/prereqs/:course", (req, res) => {
   }
 });
 
+// Load all college requirements at startup
+const collegesDir = path.join(process.cwd(), "requirementdata", "collegedata");
+function loadColleges() {
+  const colleges = {};
+  const files = fs.readdirSync(collegesDir);
+
+  files.forEach(file => {
+    if (file.endsWith(".json")) {
+      const data = JSON.parse(fs.readFileSync(path.join(collegesDir, file), "utf8"));
+      // Use `data.code` or `data.college` as the key, whichever you prefer
+      colleges[data.college] = data;
+    }
+  });
+
+  return colleges;
+}
+const colleges = loadColleges();
+
+// Endpoint for all college requirements
+app.get("/api/colleges", (req, res) => {
+  const collegeList = Object.values(colleges).map(c => ({
+    code: c.code || c.college,
+    name: c.college
+  }));
+  res.json(collegeList);
+});
+
+// Endpoint for specific college requirements
+app.get("/api/colleges/:college", (req, res) => {
+  const collegeName = req.params.college;
+  const collegeData = colleges[collegeName];
+
+  if (!collegeData) {
+    return res.status(404).json({ error: "College not found" });
+  }
+
+  res.json(collegeData);
+});
+
 //Endpoint for suggest
 app.post("/api/suggest", (req, res) => {
-  const { major, completed } = req.body;
+  const { major, college, completed } = req.body;
+
+  if (!college || !colleges[college]) {
+    return res.status(400).json({ error: "Invalid or missing college" })
+  }
 
   if (!major || !majorReqs[major]) {
     return res.status(400).json({ error: "Invalid or missing major" });
@@ -175,6 +219,7 @@ app.post("/api/suggest", (req, res) => {
 
   const reqs = [
     ...majorReqs[major].requirements.lower_division.courses,
+    ...colleges[college].requirements.courses,
     ...majorReqs[major].requirements.upper_division.courses
   ];
 
@@ -319,10 +364,21 @@ app.post("/api/suggest", (req, res) => {
     }
   }
 
-  const sections = allCourses.filter(sec =>
-    unmet.includes(`${sec.dept} ${sec.code}`)
-  );
+  const sections = allCourses.filter(sec => {
+    const code = `${sec.dept} ${sec.code}`;
+  
+    if (unmet.includes(code)) return true;
+  
+    for (const u of urgent) {
+      if (u.type === "one" && u.courses.includes(code)) {
+        return true;
+      }
+    }
+  
+    return false;
+  });
 
+  console.log(sections);
   res.json({ urgent, future, sections });
 });
 
