@@ -4,7 +4,8 @@ function App() {
   const [form, setForm] = useState({
     major: '',
     completedCourses: '',
-    college: ''
+    college: '',
+    honorsSequence: false
   });
 
   const [majors, setMajors] = useState([]);
@@ -19,6 +20,11 @@ function App() {
 
   const [colleges, setColleges] = useState([]);
   const [selectedCollege, setSelectedCollege] = useState("");
+  
+  // AI filtering state
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiResults, setAiResults] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
   
   useEffect(() => {
     async function fetchMajors() {
@@ -88,7 +94,8 @@ function App() {
         body: JSON.stringify({
           major: form.major,
           completed: completedCourses,
-          college: form.college
+          college: form.college,
+          honorsSequence: form.honorsSequence
         }),
       });
     
@@ -105,6 +112,39 @@ function App() {
       setResults({ urgent: [], future: [], sections: [] });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleAiFilter() {
+    if (!aiQuery.trim() || !form.major) {
+      alert("Please enter a query and select a major first");
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      const completedCourses = form.completedCourses.split(',').map(c => c.trim()).filter(c => c);
+      const allCourses = [...results.urgent, ...results.future];
+      
+      const response = await fetch("http://localhost:3001/api/ai-filter-courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userQuery: aiQuery,
+          courses: allCourses,
+          completedCourses,
+          major: form.major
+        })
+      });
+
+      if (!response.ok) throw new Error("Failed to filter courses with AI");
+      const data = await response.json();
+      setAiResults(data);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to filter courses with AI");
+    } finally {
+      setAiLoading(false);
     }
   }
 
@@ -166,7 +206,7 @@ function App() {
             <div className="ml-4 mt-2">
               {item.courses.map((c, idx) => {
                 const secForCourse = sections.filter(
-                  sec => `${sec.dept} ${sec.code}`);
+                  sec => `${sec.dept} ${sec.code}`.toUpperCase().trim() === c.toUpperCase().trim());
                 if (secForCourse.length === 0) return null;
   
                 return (
@@ -333,6 +373,22 @@ function App() {
             />
           </div>
 
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                name="honorsSequence"
+                checked={form.honorsSequence}
+                onChange={(e) => setForm({ ...form, honorsSequence: e.target.checked })}
+                className="rounded"
+              />
+              <span className="font-medium">Use Honors Math Sequence (MATH 31AH, 31BH, 31CH)</span>
+            </label>
+            <p className="text-sm text-gray-600 mt-1">
+              Check this if you want to take the honors math sequence instead of the regular sequence (MATH 18, 20C, etc.)
+            </p>
+          </div>
+
           <button
             type="submit"
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
@@ -343,6 +399,76 @@ function App() {
         </form>
 
         {error && <p className="text-red-500 mt-4">{error}</p>}
+
+        {/* AI Course Filtering Section */}
+        {results.urgent.length > 0 || results.future.length > 0 ? (
+          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+            <h2 className="text-xl font-semibold mb-4">🤖 AI Course Filter</h2>
+            <p className="text-gray-600 mb-4">
+              Ask AI to help you find courses based on your interests, career goals, or specific requirements.
+            </p>
+            
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                value={aiQuery}
+                onChange={(e) => setAiQuery(e.target.value)}
+                placeholder="e.g., 'courses for machine learning', 'easy courses to boost GPA', 'courses for software engineering'"
+                className="flex-1 border rounded p-2"
+                onKeyPress={(e) => e.key === 'Enter' && handleAiFilter()}
+              />
+              <button
+                onClick={handleAiFilter}
+                disabled={aiLoading || !aiQuery.trim()}
+                className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700 disabled:bg-gray-400"
+              >
+                {aiLoading ? 'Filtering...' : 'Filter with AI'}
+              </button>
+            </div>
+
+            {aiResults && (
+              <div className="mt-4 p-4 bg-white rounded border">
+                <h3 className="font-semibold text-lg mb-2">🎯 AI Recommendations</h3>
+                <p className="text-gray-700 mb-4">{aiResults.summary}</p>
+                
+                {aiResults.filtered_courses && aiResults.filtered_courses.length > 0 ? (
+                  <div className="space-y-3">
+                    {aiResults.filtered_courses.map((course, idx) => (
+                      <div key={idx} className="p-3 border rounded bg-blue-50">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h4 className="font-medium text-blue-900">{course.course_code}</h4>
+                            <p className="text-sm text-gray-600 mt-1">{course.reason}</p>
+                            <div className="flex gap-4 mt-2 text-xs">
+                              <span className={`px-2 py-1 rounded ${course.prerequisites_met ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                Prereqs: {course.prerequisites_met ? 'Met' : 'Not Met'}
+                              </span>
+                              <span className="px-2 py-1 rounded bg-gray-100 text-gray-800">
+                                Difficulty: {course.difficulty}
+                              </span>
+                              <span className="px-2 py-1 rounded bg-blue-100 text-blue-800">
+                                Relevance: {Math.round(course.relevance_score * 100)}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500">No courses found matching your criteria.</p>
+                )}
+                
+                {aiResults.recommendations && (
+                  <div className="mt-4 p-3 bg-yellow-50 rounded border-l-4 border-yellow-400">
+                    <h4 className="font-medium text-yellow-800">💡 Recommendations</h4>
+                    <p className="text-yellow-700 mt-1">{aiResults.recommendations}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : null}
 
         <div className="mt-6 grid grid-cols-2 gap-6">
           <div>

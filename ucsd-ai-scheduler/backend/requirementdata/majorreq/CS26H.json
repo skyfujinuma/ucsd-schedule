@@ -1,6 +1,6 @@
 {
-  "major": "B.S. Computer Science",
-  "code": "CS26",
+  "major": "B.S. Computer Science (Honors)",
+  "code": "CS26H",
   "catalog_year": "2024-2025",
   "requirements": {
     "lower_division": {
@@ -11,10 +11,7 @@
           "courses": ["CSE 8B", "CSE 11"]
         },
         "CSE 12",
-        {
-          "type": "one",
-          "courses": ["CSE 20", "MATH 15A", "MATH 109"]
-        },
+        "MATH 31CH",
         {
           "type": "one",
           "courses": ["CSE 21", "MATH 154", "MATH 184"]
@@ -32,8 +29,8 @@
         },
         "MATH 20A",
         "MATH 20B",
-        "MATH 20C",
-        "MATH 18",
+        "MATH 31BH",
+        "MATH 31AH",
         {
           "type": "one",
           "courses": [

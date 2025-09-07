@@ -102,7 +102,15 @@ function loadAllMajorReqs() {
   });
   return majors;
 }
-const majorReqs = loadAllMajorReqs();
+const allMajorReqs = loadAllMajorReqs();
+
+// Create a version for dropdown (excluding honors variants)
+const majorReqs = {};
+Object.keys(allMajorReqs).forEach(code => {
+  if (!code.endsWith("H")) {
+    majorReqs[code] = allMajorReqs[code];
+  }
+});
 console.log("Loaded Major Reqs:", Object.keys(majorReqs).length);
 
 
@@ -200,7 +208,7 @@ app.get("/api/colleges/:college", (req, res) => {
 
 //Endpoint for suggest
 app.post("/api/suggest", (req, res) => {
-  const { major, college, completed } = req.body;
+  const { major, college, completed, honorsSequence } = req.body;
 
   if (!college || !colleges[college]) {
     return res.status(400).json({ error: "Invalid or missing college" })
@@ -210,6 +218,12 @@ app.post("/api/suggest", (req, res) => {
     return res.status(400).json({ error: "Invalid or missing major" });
   }
 
+  // Check if the selected major exists (for honors variants)
+  const selectedMajor = (major === "CS26" && honorsSequence) ? "CS26H" : major;
+  if (!allMajorReqs[selectedMajor]) {
+    return res.status(400).json({ error: "Invalid major configuration" });
+  }
+
   const unmet = [];             // raw course codes for section matching
   const urgent = [];            // courses ready to take
   const future = [];            // courses with missing prereqs
@@ -217,43 +231,65 @@ app.post("/api/suggest", (req, res) => {
   const addedUrgent = new Set(); // tracks urgent
   const addedFuture = new Set(); // tracks future
 
+  // selectedMajor is already defined above
+
   const reqs = [
-    ...majorReqs[major].requirements.lower_division.courses,
+    ...allMajorReqs[selectedMajor].requirements.lower_division.courses,
     ...colleges[college].requirements.courses,
-    ...majorReqs[major].requirements.upper_division.courses
+    ...allMajorReqs[selectedMajor].requirements.upper_division.courses
   ];
 
-  function addCourseWithPrereqs(course) {
+  function addCourseWithPrereqs(course, processingStack = new Set()) {
     if (completed.includes(course) || addedRaw.has(course)) return;
+    if (processingStack.has(course)) return; // Prevent infinite recursion
+    
+    // Skip honors courses when honors sequence is not selected
+    if (!honorsSequence && (course.includes("31AH") || course.includes("31BH") || course.includes("31CH"))) {
+      return;
+    }
+    
+    processingStack.add(course);
 
     const prereqData = allPrereqs[course];
     let missingPrereqs = [];
+    
 
     if (prereqData && prereqData.prereqs) {
-      const prereqsArray = Array.isArray(prereqData.prereqs)
-        ? prereqData.prereqs
-        : [prereqData.prereqs];
-
-      for (const pr of prereqsArray) {
-        if (pr.type === "one") {
-          const anyCompleted = pr.courses.some(c => completed.includes(c) || addedRaw.has(c));
-          if (!anyCompleted) {
-            for (const option of pr.courses) {
-              if (!completed.includes(option)) {
-                addCourseWithPrereqs(option);
-                missingPrereqs.push(option);
-              }
+      const prereq = prereqData.prereqs;
+      
+      if (prereq.type === "one") {
+        const anyCompleted = prereq.courses.some(c => completed.includes(c));
+        if (!anyCompleted) {
+          for (const option of prereq.courses) {
+            if (!completed.includes(option)) {
+              missingPrereqs.push(option);
             }
           }
-        } else if (typeof pr === "string") {
-          addCourseWithPrereqs(pr);
-          if (!completed.includes(pr)) missingPrereqs.push(pr);
-        } 
+        }
+      } else if (prereq.type === "all") {
+        // Handle "all" type prerequisites
+        for (const subPrereq of prereq.courses) {
+          if (subPrereq.type === "one") {
+            const anyCompleted = subPrereq.courses.some(c => completed.includes(c));
+            if (!anyCompleted) {
+              for (const option of subPrereq.courses) {
+                if (!completed.includes(option)) {
+                  missingPrereqs.push(option);
+                }
+              }
+            }
+          } else if (typeof subPrereq === "string") {
+            if (!completed.includes(subPrereq)) missingPrereqs.push(subPrereq);
+          }
+        }
+      } else if (typeof prereq === "string") {
+        if (!completed.includes(prereq)) missingPrereqs.push(prereq);
       }
     }
 
     unmet.push(course);
     addedRaw.add(course);
+
 
     if (missingPrereqs.length === 0) {
       if (!addedUrgent.has(course)) {
@@ -280,23 +316,36 @@ app.post("/api/suggest", (req, res) => {
     
         // Check each course individually for prereqs
         item.courses.forEach(c => {
-          const prereqs = allPrereqs[c]?.prereqs || [];
+          const prereqData = allPrereqs[c];
           let ready = true;
     
-          if (prereqs && prereqs.length > 0) {
-            const prereqArray = Array.isArray(prereqs) ? prereqs : [prereqs];
-            for (const pr of prereqArray) {
-              if (pr.type === "one") {
-                const anyPrCompleted = pr.courses.some(pc => completed.includes(pc));
-                if (!anyPrCompleted) {
-                  ready = false;
-                  break;
+          if (prereqData && prereqData.prereqs) {
+            const prereq = prereqData.prereqs;
+            
+            if (prereq.type === "one") {
+              const anyPrCompleted = prereq.courses.some(pc => completed.includes(pc));
+              if (!anyPrCompleted) {
+                ready = false;
+              }
+            } else if (prereq.type === "all") {
+              // Handle "all" type prerequisites
+              for (const subPrereq of prereq.courses) {
+                if (subPrereq.type === "one") {
+                  const anyPrCompleted = subPrereq.courses.some(pc => completed.includes(pc));
+                  if (!anyPrCompleted) {
+                    ready = false;
+                    break;
+                  }
+                } else if (typeof subPrereq === "string") {
+                  if (!completed.includes(subPrereq)) {
+                    ready = false;
+                    break;
+                  }
                 }
-              } else if (typeof pr === "string") {
-                if (!completed.includes(pr)) {
-                  ready = false;
-                  break;
-                }
+              }
+            } else if (typeof prereq === "string") {
+              if (!completed.includes(prereq)) {
+                ready = false;
               }
             }
           }
@@ -314,8 +363,9 @@ app.post("/api/suggest", (req, res) => {
           }
         }
     
-        // Add blocked courses to future
-        if (blockedCourses.length > 0) {
+        // Only add blocked courses to future if NO courses are eligible
+        // For "one" type requirements, if any course is eligible, don't show blocked ones
+        if (blockedCourses.length > 0 && eligibleCourses.length === 0) {
           const key = blockedCourses.join(" / ");
           if (!addedFuture.has(key)) {
             future.push({ type: "one", courses: blockedCourses });
@@ -367,10 +417,18 @@ app.post("/api/suggest", (req, res) => {
   const sections = allCourses.filter(sec => {
     const code = `${sec.dept} ${sec.code}`;
   
+    // Check if this section matches any unmet course
     if (unmet.includes(code)) return true;
   
+    // Check if this section matches any urgent course
     for (const u of urgent) {
       if (u.type === "one" && u.courses.includes(code)) {
+        return true;
+      }
+      if (u.type === "string" && u.course === code) {
+        return true;
+      }
+      if (u.type === "at_least" && u.courses.includes(code)) {
         return true;
       }
     }
@@ -378,8 +436,23 @@ app.post("/api/suggest", (req, res) => {
     return false;
   });
 
-  console.log(sections);
-  res.json({ urgent, future, sections });
+  // Post-processing: Remove standalone courses that are already covered by "one" type requirements
+  const coursesInOneType = new Set();
+  urgent.forEach(item => {
+    if (item.type === "one") {
+      item.courses.forEach(course => coursesInOneType.add(course));
+    }
+  });
+
+  // Filter out standalone courses that are already in "one" type requirements
+  const filteredUrgent = urgent.filter(item => {
+    if (item.type === "string" && coursesInOneType.has(item.course)) {
+      return false; // Remove this standalone course
+    }
+    return true; // Keep this item
+  });
+
+  res.json({ urgent: filteredUrgent, future, sections });
 });
 
 
@@ -418,6 +491,70 @@ Respond ONLY with the JSON.
   }
 });
 
+app.post('/api/ai-filter-courses', async (req, res) => {
+  const { userQuery, courses, completedCourses, major } = req.body;
+
+  // Prepare course data for the AI
+  const courseData = courses.map(course => ({
+    code: course.course || course.courses?.[0] || 'Unknown',
+    title: course.title || 'Unknown',
+    units: course.units || 'Unknown',
+    description: course.description || 'No description available',
+    type: course.type || 'string',
+    courses: course.courses || [course.course]
+  }));
+
+  const prompt = `
+You are an academic advisor helping a ${major} major student select courses.
+
+STUDENT CONTEXT:
+- Major: ${major}
+- Completed courses: ${completedCourses.join(', ') || 'None yet'}
+- Available courses: ${JSON.stringify(courseData, null, 2)}
+
+USER REQUEST: "${userQuery}"
+
+TASK: Filter and rank the available courses based on the user's request. Consider:
+1. Course relevance to the request
+2. Prerequisites (student's completed courses)
+3. Course difficulty and workload
+4. Career/academic goals alignment
+5. Course sequencing and timing
+
+RESPONSE FORMAT (JSON only):
+{
+  "filtered_courses": [
+    {
+      "course_code": "CSE 151A",
+      "relevance_score": 0.9,
+      "reason": "Core machine learning course, perfect for AI focus",
+      "prerequisites_met": true,
+      "difficulty": "intermediate"
+    }
+  ],
+  "summary": "Found X courses that match your request",
+  "recommendations": "Consider taking these courses in this order for optimal learning path"
+}
+
+Respond ONLY with valid JSON.`;
+
+  try {
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+
+    // Extract JSON from response
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}') + 1;
+    const jsonText = text.slice(jsonStart, jsonEnd);
+
+    const parsed = JSON.parse(jsonText);
+    res.json(parsed);
+  } catch (error) {
+    console.error('Gemini API error:', error);
+    res.status(500).json({ error: 'Failed to filter courses with AI.' });
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
