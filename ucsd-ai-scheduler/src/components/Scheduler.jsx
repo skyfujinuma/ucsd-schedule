@@ -99,6 +99,35 @@ const Scheduler = ({ onBackToLanding }) => {
   // Course selection state for "choose one" and "at_least" groups
   const [selectedUrgentCourses, setSelectedUrgentCourses] = useState({});
   const [selectedElectiveCourses, setSelectedElectiveCourses] = useState({});
+  const [selectedFutureCourses, setSelectedFutureCourses] = useState({});
+  
+  // State for course section dropdowns
+  const [expandedCourses, setExpandedCourses] = useState(new Set());
+  
+  // Toggle course section expansion
+  const toggleCourseExpansion = (courseCode) => {
+    setExpandedCourses(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(courseCode)) {
+        newSet.delete(courseCode);
+      } else {
+        newSet.add(courseCode);
+      }
+      return newSet;
+    });
+  };
+
+  // Check if any sections for a course are selected
+  const hasSelectedSections = (courseCode) => {
+    if (!results.sections) return false;
+    return results.sections.some(section => {
+      const sectionCourseCode = `${section.dept} ${section.code}`;
+      if (sectionCourseCode !== courseCode) return false;
+      
+      const sectionId = `${section.dept} ${section.code} ${section.sectionType} ${section.days.join('')} ${section.times.start}`;
+      return selectedSections.has(sectionId);
+    });
+  };
   
   useEffect(() => {
     async function fetchMajors() {
@@ -291,6 +320,45 @@ const Scheduler = ({ onBackToLanding }) => {
     return Object.values(groups);
   };
 
+  // New function to group sections by professor
+  const groupSectionsByProfessor = (sections) => {
+    const groups = {};
+    
+    sections.forEach(section => {
+      // Create a key that includes both course code and professor
+      const professor = section.professor || 'TBA';
+      const key = `${section.dept} ${section.code} - ${professor}`;
+      
+      if (!groups[key]) {
+        groups[key] = {
+          lecture: null,
+          discussions: [],
+          labs: [],
+          seminars: [],
+          professor: professor,
+          professorRating: section.professor_rating
+        };
+      }
+      
+      switch(section.sectionType) {
+        case 'LE':
+          groups[key].lecture = section;
+          break;
+        case 'DI':
+          groups[key].discussions.push(section);
+          break;
+        case 'LA':
+          groups[key].labs.push(section);
+          break;
+        case 'SE':
+          groups[key].seminars.push(section);
+          break;
+      }
+    });
+    
+    return Object.values(groups);
+  };
+
   const formatProfessorWithRating = (professor, professorRating) => {
     if (!professor) return "TBA";
     if (!professorRating) return professor;
@@ -315,19 +383,44 @@ const Scheduler = ({ onBackToLanding }) => {
     );
   }
 
-  const toggleSectionInCalendar = (sectionId, associatedLectureId = null) => {
+  // New function for multi-line professor display
+  const formatProfessorMultiLine = (professor, professorRating) => {
+    if (!professor) return { name: "TBA", stars: "", difficulty: "" };
+    if (!professorRating) return { name: professor, stars: "", difficulty: "" };
+    
+    const rating = professorRating.rating;
+    const difficulty = professorRating.difficulty;
+    const numRatings = professorRating.num_ratings;
+    
+    // Create star rating display
+    const stars = '★'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
+    
+    return {
+      name: professor,
+      stars: `${stars} (${rating}/5)`,
+      difficulty: `Difficulty: ${difficulty}/5 • ${numRatings} ratings`
+    };
+  };
+
+  const toggleSectionInCalendar = (sectionId, associatedLectureId = null, associatedDiscussionId = null) => {
     const newSelected = new Set(selectedSections);
     if (newSelected.has(sectionId)) {
-      // Remove both the section and its associated lecture
+      // Remove the section and its associated sections
       newSelected.delete(sectionId);
       if (associatedLectureId) {
         newSelected.delete(associatedLectureId);
       }
+      if (associatedDiscussionId) {
+        newSelected.delete(associatedDiscussionId);
+      }
     } else {
-      // Add both the section and its associated lecture
+      // Add the section and its associated sections
       newSelected.add(sectionId);
       if (associatedLectureId) {
         newSelected.add(associatedLectureId);
+      }
+      if (associatedDiscussionId) {
+        newSelected.add(associatedDiscussionId);
       }
     }
     setSelectedSections(newSelected);
@@ -413,6 +506,53 @@ const Scheduler = ({ onBackToLanding }) => {
     });
   };
 
+  // Handle course selection from "choose one" and "at_least" groups for future courses
+  const selectFutureCourse = (groupIndex, courseCode, groupType) => {
+    setSelectedFutureCourses(prev => {
+      const currentSelection = prev[groupIndex] || [];
+      
+      if (groupType === "one") {
+        // For "choose one", replace the selection
+        return {
+          ...prev,
+          [groupIndex]: courseCode
+        };
+      } else if (groupType === "at_least") {
+        // For "at_least", toggle the course in the array
+        const isSelected = currentSelection.includes(courseCode);
+        if (isSelected) {
+          return {
+            ...prev,
+            [groupIndex]: currentSelection.filter(c => c !== courseCode)
+          };
+        } else {
+          return {
+            ...prev,
+            [groupIndex]: [...currentSelection, courseCode]
+          };
+        }
+      }
+      
+      return prev;
+    });
+  };
+
+  // Reset course selection for future courses
+  const resetFutureCourseSelection = (groupIndex) => {
+    setSelectedFutureCourses(prev => {
+      const newState = { ...prev };
+      delete newState[groupIndex];
+      return newState;
+    });
+  };
+
+  // Use results directly since deduplication is now handled in the backend
+  const processedResults = { urgent: results.urgent || [], future: results.future || [] };
+  
+  // Debug logging
+  console.log('Frontend received results:', results);
+  console.log('Frontend processedResults:', processedResults);
+
   function renderCourseItem(item) {
     if (!item) return "Unknown";
   
@@ -430,6 +570,38 @@ const Scheduler = ({ onBackToLanding }) => {
     }
     return JSON.stringify(item.course || item.value || item);
   }
+
+  // Component for rendering singular courses with optional dropdown arrows
+  const SingularCourseItem = ({ item, showDropdown = true }) => {
+    const courseText = renderCourseItem(item);
+    const courseCode = item.type === "string" ? item.course : courseText;
+    const hasSections = hasSelectedSections(courseCode);
+    
+    return (
+      <>
+        <div className="flex items-center justify-between">
+          <div className={`${
+            hasSections 
+              ? "text-green-100" 
+              : "text-white"
+          }`}>
+            • {courseText}
+          </div>
+          {showDropdown && (
+            <button
+              onClick={() => toggleCourseExpansion(courseCode)}
+              className="text-gray-400 hover:text-gray-200 text-sm"
+            >
+              {expandedCourses.has(courseCode) ? "▲" : "▼"}
+            </button>
+          )}
+        </div>
+        {showDropdown && expandedCourses.has(courseCode) && (
+          <InlineCourseSections courseCode={courseCode} />
+        )}
+      </>
+    );
+  };
 
   const CourseSection = ({ courseLabel, secForCourse }) => {
     const [open, setOpen] = useState(false);
@@ -598,6 +770,203 @@ const Scheduler = ({ onBackToLanding }) => {
     );
   };
 
+  // Component for displaying course sections inline
+  const InlineCourseSections = ({ courseCode }) => {
+    const secForCourse = results.sections ? results.sections.filter(s => 
+      `${s.dept} ${s.code}` === courseCode
+    ) : [];
+    
+    if (secForCourse.length === 0) {
+      return (
+        <div className="mt-2 ml-4">
+          <div className="text-gray-400 text-sm italic">
+            No available sections found this quarter
+          </div>
+        </div>
+      );
+    }
+
+  return (
+      <div className="mt-2 ml-4">
+        {groupSectionsByProfessor(secForCourse).map((group, gIdx) => {
+          const lectureSectionId = group.lecture ? `${group.lecture.dept} ${group.lecture.code} ${group.lecture.sectionType} ${group.lecture.days.join('')} ${group.lecture.times.start}` : null;
+          
+          return (
+            <div key={gIdx} className="mb-2">
+              {/* Lecture */}
+              {group.lecture && (
+                <div className="flex items-start gap-2">
+                  <div className="flex-1">
+                    <div className="text-gray-300 text-sm">
+                      Lecture: {group.lecture.days.join(", ")} {group.lecture.times.start} - {group.lecture.times.end} (Seats: {group.lecture.seatsRemaining ?? "N/A"})
+                    </div>
+                    {(() => {
+                      const profInfo = formatProfessorMultiLine(group.professor, group.professorRating);
+                      return (
+                        <>
+                          <div className="text-gray-300 text-sm">
+                            {profInfo.name} <span className="text-amber-400">{profInfo.stars}</span>
+                          </div>
+                          <div className="text-gray-400 text-xs">
+                            {profInfo.difficulty}
+                          </div>
+                        </>
+                      );
+                    })()}
+                    
+                    {/* Show discussion info under lecture when there's exactly one discussion */}
+                    {group.discussions.length === 1 && (
+                      <div className="text-gray-300 text-sm mt-1">
+                        Discussion: {group.discussions[0].days.join(", ")} {group.discussions[0].times.start} - {group.discussions[0].times.end} ({group.discussions[0].buildingName} {group.discussions[0].roomNumber}) (Seats: {group.discussions[0].seatsRemaining ?? "N/A"})
+                      </div>
+                    )}
+                  </div>
+                  {(group.discussions.length === 0 && group.labs.length === 0) || (group.discussions.length === 1 && group.labs.length === 0) ? (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // If there's exactly one discussion, include it automatically
+                        if (group.discussions.length === 1) {
+                          const discussionSectionId = `${group.discussions[0].dept} ${group.discussions[0].code} ${group.discussions[0].sectionType} ${group.discussions[0].days.join('')} ${group.discussions[0].times.start}`;
+                          toggleSectionInCalendar(lectureSectionId, null, discussionSectionId);
+                        } else {
+                          toggleSectionInCalendar(lectureSectionId);
+                        }
+                      }}
+                      className={`px-2 py-1 text-xs rounded transition-colors flex-shrink-0 ${
+                        selectedSections.has(lectureSectionId)
+                          ? 'bg-green-500 text-white'
+                          : 'bg-blue-500 text-white hover:bg-blue-600'
+                      }`}
+                      title={selectedSections.has(lectureSectionId) ? 'Remove from calendar' : group.discussions.length === 1 ? 'Add to calendar (includes lecture and discussion)' : 'Add to calendar'}
+                    >
+                      {selectedSections.has(lectureSectionId) ? '📅 Added' : '📅 Add'}
+                    </button>
+                  ) : null}
+                </div>
+              )}
+
+              {/* Discussions - only show when there are multiple discussions */}
+              {group.discussions.length > 1 && (
+                <div className="ml-4">
+                  <span className="text-gray-300 text-sm">Discussions:</span>
+                  <ul className="list-disc ml-6">
+                    {group.discussions.map((d, i) => {
+                      const discussionSectionId = `${d.dept} ${d.code} ${d.sectionType} ${d.days.join('')} ${d.times.start}`;
+                      
+                      return (
+                        <li key={i} className="flex items-center gap-2">
+                          <span className="text-gray-300 text-sm">
+                            {d.days.join(", ")} {d.times.start} - {d.times.end} ({d.buildingName} {d.roomNumber}) Seats:{" "}
+                            {d.seatsRemaining ?? "N/A"}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleSectionInCalendar(discussionSectionId, lectureSectionId);
+                            }}
+                            className={`px-2 py-1 text-xs rounded transition-colors flex-shrink-0 ${
+                              selectedSections.has(discussionSectionId)
+                                ? 'bg-green-500 text-white'
+                                : 'bg-blue-500 text-white hover:bg-blue-600'
+                            }`}
+                            title={selectedSections.has(discussionSectionId) ? 'Remove from calendar' : 'Add to calendar (includes lecture)'}
+                          >
+                            {selectedSections.has(discussionSectionId) ? '📅 Added' : '📅 Add'}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {/* Labs */}
+              {group.labs.length > 0 && (
+                <div className="ml-4">
+                  <span className="text-gray-300 text-sm">Labs:</span>
+                  <ul className="list-disc ml-6">
+                    {group.labs.map((l, i) => {
+                      const labSectionId = `${l.dept} ${l.code} ${l.sectionType} ${l.days.join('')} ${l.times.start}`;
+                      
+                      return (
+                        <li key={i} className="flex items-center gap-2">
+                          <span className="text-gray-300 text-sm">
+                            {l.days.join(", ")} {l.times.start} - {l.times.end} ({l.buildingName} {l.roomNumber}) Seats:{" "}
+                            {l.seatsRemaining ?? "N/A"}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              // If there's exactly one discussion, include it automatically
+                              if (group.discussions.length === 1) {
+                                const discussionSectionId = `${group.discussions[0].dept} ${group.discussions[0].code} ${group.discussions[0].sectionType} ${group.discussions[0].days.join('')} ${group.discussions[0].times.start}`;
+                                toggleSectionInCalendar(labSectionId, lectureSectionId, discussionSectionId);
+                              } else {
+                                toggleSectionInCalendar(labSectionId, lectureSectionId);
+                              }
+                            }}
+                            className={`px-2 py-1 text-xs rounded transition-colors flex-shrink-0 ${
+                              selectedSections.has(labSectionId)
+                                ? 'bg-green-500 text-white'
+                                : 'bg-blue-500 text-white hover:bg-blue-600'
+                            }`}
+                            title={selectedSections.has(labSectionId) ? 'Remove from calendar' : group.discussions.length === 1 ? 'Add to calendar (includes lecture and discussion)' : 'Add to calendar (includes lecture)'}
+                          >
+                            {selectedSections.has(labSectionId) ? '📅 Added' : '📅 Add'}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+
+              {/* Seminars */}
+              {group.seminars && group.seminars.length > 0 && (
+                <div className="ml-4">
+                  <span className="text-gray-300 text-sm">Seminars:</span>
+                  <ul className="list-disc ml-6">
+                    {group.seminars.map((s, i) => {
+                      const seminarSectionId = `${s.dept} ${s.code} ${s.sectionType} ${s.days.join('')} ${s.times.start}`;
+                      
+                      return (
+                        <li key={i} className="flex items-center gap-2">
+                          <span className="text-gray-300 text-sm">
+                            {s.days.join(", ")} {s.times.start} - {s.times.end} ({s.buildingName} {s.roomNumber}) Seats:{" "}
+                            {s.seatsRemaining ?? "N/A"}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleSectionInCalendar(seminarSectionId, lectureSectionId);
+                            }}
+                            className={`px-2 py-1 text-xs rounded transition-colors flex-shrink-0 ${
+                              selectedSections.has(seminarSectionId)
+                                ? 'bg-green-500 text-white'
+                                : 'bg-blue-500 text-white hover:bg-blue-600'
+                            }`}
+                            title={selectedSections.has(seminarSectionId) ? 'Remove from calendar' : 'Add to calendar (includes lecture)'}
+                          >
+                            {selectedSections.has(seminarSectionId) ? '📅 Added' : '📅 Add'}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen w-full bg-gray-900" style={{ display: 'block' }}>
       <div className="w-full p-8">
@@ -720,105 +1089,9 @@ const Scheduler = ({ onBackToLanding }) => {
 
         {/* Results */}
         {(() => {
-          // Collect all missing prerequisites from future courses
-          const missingPrereqs = [];
-          if (results.future && results.future.length > 0) {
-            results.future.forEach(course => {
-              if (course.missingPrereqs && course.missingPrereqs.length > 0) {
-                course.missingPrereqs.forEach(prereq => {
-                  if (!missingPrereqs.includes(prereq)) {
-                    missingPrereqs.push(prereq);
-                  }
-                });
-              }
-            });
-          }
-          
-          console.log('Missing prerequisites:', missingPrereqs);
-
-          // Combine urgent courses with missing prerequisites
-          const allUrgentItems = [];
-          
-          // Add original urgent courses, but filter out those with unmet prerequisites
-          if (results.urgent && results.urgent.length > 0) {
-            results.urgent.forEach(urgentGroup => {
-              if (urgentGroup.courses && urgentGroup.courses.length > 0) {
-                // Filter out courses that appear in missing prerequisites list
-                // (these are courses that are prerequisites for other courses but have unmet prereqs themselves)
-                const availableCourses = urgentGroup.courses.filter(course => {
-                  const isMissingPrereq = missingPrereqs.includes(course);
-                  console.log(`Course ${course} is missing prereq: ${isMissingPrereq}`);
-                  return !isMissingPrereq;
-                });
-                
-                console.log(`Original urgent group: ${urgentGroup.courses.length} courses, filtered: ${availableCourses.length} courses`);
-                
-                // Only add the group if there are courses without unmet prerequisites
-                if (availableCourses.length > 0) {
-                  allUrgentItems.push({
-                    ...urgentGroup,
-                    courses: availableCourses
-                  });
-                }
-              } else {
-                // For non-course urgent items, add them as-is
-                allUrgentItems.push(urgentGroup);
-              }
-            });
-          }
-          
-          // Add missing prerequisites as grouped items based on "choose one" logic
-          // Only add prerequisites whose own prerequisites are met (mimicking backend logic)
-          if (missingPrereqs.length > 0) {
-            // Group prerequisites based on common patterns
-            const groupedPrereqs = [];
-            const processedPrereqs = new Set();
-            
-            missingPrereqs.forEach(prereq => {
-              if (processedPrereqs.has(prereq)) return;
-              
-              // Check if this prerequisite's own prerequisites are met using the cached status
-              // Only add to urgent if this prerequisite's own prerequisites are met
-              const prereqsMet = prereqStatus[prereq] === true;
-              
-              if (prereqsMet) {
-                // Check if this is part of a "choose one" group
-                const prereqGroup = findPrereqGroup(prereq, missingPrereqs);
-                
-                // Filter the group to only include prerequisites whose prereqs are met
-                const availablePrereqGroup = prereqGroup.filter(p => {
-                  if (processedPrereqs.has(p)) return false;
-                  return prereqStatus[p] === true; // Only include if explicitly checked and met
-                });
-                
-                if (availablePrereqGroup.length > 1) {
-                  // Add as a group
-                  groupedPrereqs.push({
-                    type: "one",
-                    courses: availablePrereqGroup
-                  });
-                  // Mark all in group as processed
-                  availablePrereqGroup.forEach(p => processedPrereqs.add(p));
-                } else if (availablePrereqGroup.length === 1) {
-                  // Add as individual
-                  groupedPrereqs.push({
-                    type: "one",
-                    courses: availablePrereqGroup
-                  });
-                  processedPrereqs.add(availablePrereqGroup[0]);
-                }
-              } else {
-                // Mark as processed even if not added (to avoid reprocessing)
-                processedPrereqs.add(prereq);
-              }
-            });
-            
-            allUrgentItems.push(...groupedPrereqs);
-          }
-
           // Separate urgent items into regular urgent and electives
-          const regularUrgentItems = allUrgentItems.filter(item => item.type !== "at_least");
-          const electiveItems = allUrgentItems.filter(item => item.type === "at_least");
+          const regularUrgentItems = processedResults.urgent.filter(item => item.type !== "at_least");
+          const electiveItems = processedResults.urgent.filter(item => item.type === "at_least");
 
           return (
             <div className="mt-6">
@@ -833,6 +1106,10 @@ const Scheduler = ({ onBackToLanding }) => {
                       return (
                     <div key={idx} className={`p-3 border rounded ${
                       selectedCourse && isChooseOne 
+                        ? hasSelectedSections(selectedCourse)
+                          ? "bg-green-900 border-orange-500 border-2"
+                          : "bg-red-900 border-orange-500 border-2"
+                        : courseGroup.type === "string" && hasSelectedSections(courseGroup.course)
                         ? "bg-green-900 border-green-600" 
                         : "bg-red-900 border-red-600"
                     }`}>
@@ -851,9 +1128,24 @@ const Scheduler = ({ onBackToLanding }) => {
                                     Choose Again
                                   </button>
                                 </div>
-                                <div className="text-green-100 font-medium">
+                                <div className="flex items-center justify-between">
+                                  <div className={`font-medium ${
+                                    hasSelectedSections(selectedCourse) 
+                                      ? "text-green-100" 
+                                      : "text-red-100"
+                                  }`}>
                                   • {selectedCourse}
                                 </div>
+                                  <button
+                                    onClick={() => toggleCourseExpansion(selectedCourse)}
+                                    className="text-gray-400 hover:text-gray-200 text-sm"
+                                  >
+                                    {expandedCourses.has(selectedCourse) ? "▲" : "▼"}
+                                  </button>
+                                </div>
+                                {expandedCourses.has(selectedCourse) && (
+                                  <InlineCourseSections courseCode={selectedCourse} />
+                                )}
                               </div>
                             ) : (
                               // Show course options
@@ -884,7 +1176,7 @@ const Scheduler = ({ onBackToLanding }) => {
                             )}
                           </div>
                         ) : (
-                          renderCourseItem(courseGroup)
+                          <SingularCourseItem item={courseGroup} />
                         )}
                       </div>
                     </div>
@@ -898,14 +1190,72 @@ const Scheduler = ({ onBackToLanding }) => {
           );
         })()}
 
-        {results.future && results.future.length > 0 && (
+        {processedResults.future && processedResults.future.length > 0 && (
           <div className="mt-6">
             <h2 className="text-xl font-semibold mb-3 text-white">Future Course Requirements</h2>
             <div className="space-y-2">
-              {results.future.map((course, idx) => (
-                <div key={idx} className="p-3 bg-yellow-900 border border-yellow-600 rounded">
+              {processedResults.future.map((course, idx) => {
+                const selectedCourse = selectedFutureCourses[idx];
+                const isChooseOne = course.type === "one" && course.courses && course.courses.length > 1;
+                const isAtLeast = course.type === "at_least";
+                const selectedCoursesList = Array.isArray(selectedCourse) ? selectedCourse : (selectedCourse ? [selectedCourse] : []);
+                
+                return (
+                  <div key={idx} className={`p-3 border rounded ${
+                    (selectedCourse && isChooseOne) || (selectedCoursesList.length > 0 && isAtLeast)
+                      ? (selectedCourse && isChooseOne && hasSelectedSections(selectedCourse)) || 
+                        (selectedCoursesList.length > 0 && isAtLeast && selectedCoursesList.some(course => hasSelectedSections(course)))
+                        ? "bg-green-900 border-orange-500 border-2"
+                        : "bg-yellow-900 border-orange-500 border-2"
+                      : course.type === "string" && hasSelectedSections(course.course)
+                        ? "bg-green-900 border-green-600"
+                        : "bg-yellow-900 border-yellow-600"
+                  }`}>
                   <div className="font-medium text-yellow-100">
                     {course.courses && course.courses.length > 0 ? (
+                        <div>
+                          {selectedCourse && isChooseOne ? (
+                            // Show selected course with reset button for "choose one"
+                            <div>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-green-200 text-sm">Selected:</span>
+                                <button
+                                  onClick={() => resetFutureCourseSelection(idx)}
+                                  className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded transition-colors"
+                                >
+                                  Choose Again
+                                </button>
+                              </div>
+                              <div className="text-yellow-100 font-medium">
+                                • {selectedCourse}
+                              </div>
+                            </div>
+                          ) : selectedCoursesList.length > 0 && isAtLeast ? (
+                            // Show selected courses with reset button for "at_least"
+                            <div>
+                              <div className="flex items-center justify-between mb-3">
+                                <span className="text-green-200 text-sm">
+                                  Selected: {selectedCoursesList.length} / {course.count || course.courses.length}
+                                </span>
+                                <button
+                                  onClick={() => resetFutureCourseSelection(idx)}
+                                  className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded transition-colors"
+                                >
+                                  Reset All
+                                </button>
+                              </div>
+                              <div className="space-y-1">
+                                {selectedCoursesList.map((selectedCourseCode, selectedIdx) => (
+                                  <div key={selectedIdx}>
+                                    <div className="text-yellow-100 font-medium">
+                                      • {selectedCourseCode}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            // Show course options
                       <div>
                         {course.courses.length > 1 && (
                           <div className="mb-2 text-sm text-yellow-200">
@@ -917,15 +1267,26 @@ const Scheduler = ({ onBackToLanding }) => {
                           </div>
                         )}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                          {course.courses.map((courseCode, courseIdx) => (
-                            <div key={courseIdx} className="text-sm">
+                                {course.courses.map((courseCode, courseIdx) => {
+                                  const isSelected = selectedCoursesList.includes(courseCode);
+                                  return (
+                                    <div 
+                                      key={courseIdx} 
+                                      className={`text-sm cursor-pointer hover:bg-yellow-800 p-1 rounded transition-colors ${
+                                        (isChooseOne || isAtLeast) ? "hover:text-yellow-100" : ""
+                                      }`}
+                                      onClick={(isChooseOne || isAtLeast) ? () => selectFutureCourse(idx, courseCode, course.type) : undefined}
+                                    >
                               • {courseCode}
                             </div>
-                          ))}
+                                  );
+                                })}
                         </div>
+                            </div>
+                          )}
                       </div>
                     ) : (
-                      renderCourseItem(course)
+                        <SingularCourseItem item={course} showDropdown={false} />
                     )}
                   </div>
                   {course.missingPrereqs && course.missingPrereqs.length > 0 && (
@@ -967,7 +1328,8 @@ const Scheduler = ({ onBackToLanding }) => {
                     </div>
                   )}
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -993,24 +1355,6 @@ const Scheduler = ({ onBackToLanding }) => {
           </div>
         )}
 
-        {/* Regular Results */}
-        {results.sections && results.sections.length > 0 && !aiResults && (
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-3 text-white">Available Courses</h2>
-            <div className="space-y-2">
-              {Object.entries(
-                results.sections.reduce((acc, section) => {
-                  const key = `${section.dept} ${section.code}`;
-                  if (!acc[key]) acc[key] = [];
-                  acc[key].push(section);
-                  return acc;
-                }, {})
-              ).map(([course, secForCourse]) => 
-                <CourseSection key={course} courseLabel={course} secForCourse={secForCourse} />
-              )}
-            </div>
-          </div>
-        )}
 
           </div>
           
@@ -1036,8 +1380,8 @@ const Scheduler = ({ onBackToLanding }) => {
           <div className="lg:col-span-1 xl:col-span-1 bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 h-full overflow-y-auto">
             <h2 className="text-xl font-semibold mb-3 text-white">Electives</h2>
             {(() => {
-              // Get elective items from the urgent items
-              const electiveItems = results.urgent ? results.urgent.filter(item => item.type === "at_least") : [];
+              // Get elective items from the processed urgent items
+              const electiveItems = processedResults.urgent ? processedResults.urgent.filter(item => item.type === "at_least") : [];
               
               return electiveItems.length > 0 ? (
                 <div className="space-y-2">

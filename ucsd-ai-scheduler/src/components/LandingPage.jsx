@@ -51,7 +51,7 @@ const LandingPage = ({ onGetStarted }) => {
            </div>
 
           {/* CTA Button */}
-          <button 
+          <button
             onClick={onGetStarted}
             className="group relative bg-gray-300 hover:bg-gray-200 text-gray-900 px-6 py-3 sm:px-8 sm:py-4 md:px-10 md:py-4 lg:px-12 lg:py-5 rounded-full text-base sm:text-lg md:text-xl lg:text-2xl font-black transition-all duration-300 transform hover:scale-105"
             style={{

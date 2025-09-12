@@ -250,6 +250,7 @@ app.post("/api/suggest", (req, res) => {
   const addedRaw = new Set();   // tracks what's in unmet
   const addedUrgent = new Set(); // tracks urgent
   const addedFuture = new Set(); // tracks future
+  const allProcessedCourses = new Set(); // tracks ALL courses across all categories to prevent duplicates
 
   // selectedMajor is already defined above
 
@@ -260,7 +261,7 @@ app.post("/api/suggest", (req, res) => {
   ];
 
   function addCourseWithPrereqs(course, processingStack = new Set()) {
-    if (completed.includes(course) || addedRaw.has(course)) return;
+    if (completed.includes(course) || addedRaw.has(course) || allProcessedCourses.has(course)) return;
     if (processingStack.has(course)) return; // Prevent infinite recursion
     
     // Skip honors courses when honors sequence is not selected
@@ -309,7 +310,7 @@ app.post("/api/suggest", (req, res) => {
 
     unmet.push(course);
     addedRaw.add(course);
-
+    allProcessedCourses.add(course);
 
     if (missingPrereqs.length === 0) {
       if (!addedUrgent.has(course)) {
@@ -336,6 +337,9 @@ app.post("/api/suggest", (req, res) => {
     
         // Check each course individually for prereqs
         item.courses.forEach(c => {
+          // Skip if course is already processed
+          if (allProcessedCourses.has(c)) return;
+          
           const prereqData = allPrereqs[c];
           let ready = true;
     
@@ -374,12 +378,14 @@ app.post("/api/suggest", (req, res) => {
           else blockedCourses.push(c);
         });
     
-        // Add eligible couses to blocked
+        // Add eligible courses to urgent
         if (eligibleCourses.length > 0) {
           const key = eligibleCourses.join(" / ");
           if (!addedUrgent.has(key)) {
             urgent.push({ type: "one", courses: eligibleCourses});
             addedUrgent.add(key);
+            // Mark all eligible courses as processed
+            eligibleCourses.forEach(c => allProcessedCourses.add(c));
           }
         }
     
@@ -390,6 +396,8 @@ app.post("/api/suggest", (req, res) => {
           if (!addedFuture.has(key)) {
             future.push({ type: "one", courses: blockedCourses });
             addedFuture.add(key);
+            // Mark all blocked courses as processed
+            blockedCourses.forEach(c => allProcessedCourses.add(c));
           }
         }
       }
@@ -401,6 +409,9 @@ app.post("/api/suggest", (req, res) => {
     
         // Check if at least one remaining course is actually eligible right now
         const eligibleCourses = remaining.filter(c => {
+          // Skip if course is already processed
+          if (allProcessedCourses.has(c)) return false;
+          
           const prereqs = allPrereqs[c]?.prereqs || [];
           if (!prereqs || prereqs.length === 0) return true;
           return Array.isArray(prereqs)
@@ -418,6 +429,8 @@ app.post("/api/suggest", (req, res) => {
               eligible: eligibleCourses
             });
             addedUrgent.add(key);
+            // Mark all courses in this group as processed
+            item.courses.forEach(c => allProcessedCourses.add(c));
           }
         } else {
           const key = `at_least_${item.count}_${item.courses.join(" / ")}`;
@@ -428,6 +441,8 @@ app.post("/api/suggest", (req, res) => {
               courses: item.courses
             });
             addedFuture.add(key);
+            // Mark all courses in this group as processed
+            item.courses.forEach(c => allProcessedCourses.add(c));
           }
         }
       }
@@ -472,7 +487,91 @@ app.post("/api/suggest", (req, res) => {
     return true; // Keep this item
   });
 
-  res.json({ urgent: filteredUrgent, future, sections });
+  // Add missing prerequisites to future courses (if their own prerequisites are met and not already in urgent)
+  const processedFuture = [...future];
+  const urgentCourses = new Set();
+  
+  console.log('=== MISSING PREREQS DEBUG ===');
+  console.log('Original future courses:', future);
+  console.log('Filtered urgent courses:', filteredUrgent);
+  
+  // Collect all courses that are in urgent (for deduplication)
+  filteredUrgent.forEach(item => {
+    if (item.type === "string") {
+      urgentCourses.add(item.course);
+    } else if (item.type === "one" && item.courses) {
+      item.courses.forEach(course => urgentCourses.add(course));
+    } else if (item.type === "at_least" && item.courses) {
+      item.courses.forEach(course => urgentCourses.add(course));
+    }
+  });
+
+  console.log('Urgent courses set:', Array.from(urgentCourses));
+  console.log('All processed courses:', Array.from(allProcessedCourses));
+
+  // Process each future course to add its missing prerequisites
+  future.forEach((futureCourse, idx) => {
+    console.log(`Processing future course ${idx}:`, futureCourse);
+    if (futureCourse.missingPrereqs && futureCourse.missingPrereqs.length > 0) {
+      console.log(`  Missing prereqs: ${futureCourse.missingPrereqs.join(', ')}`);
+      futureCourse.missingPrereqs.forEach(prereq => {
+        console.log(`    Checking prerequisite: ${prereq}`);
+        
+        // Skip if this prerequisite is already in urgent courses
+        if (urgentCourses.has(prereq) || allProcessedCourses.has(prereq)) {
+          console.log(`      Skipping ${prereq} - already in urgent or processed`);
+          return;
+        }
+
+        // Check if this prerequisite's own prerequisites are met
+        const prereqData = allPrereqs[prereq];
+        let prereqReady = true;
+        
+        if (prereqData && prereqData.prereqs) {
+          const prereqReqs = prereqData.prereqs;
+          console.log(`      Prereq data for ${prereq}:`, prereqReqs);
+          
+          if (prereqReqs.type === "one") {
+            prereqReady = prereqReqs.courses.some(c => completed.includes(c));
+            console.log(`      ${prereq} prereq type "one" - ready: ${prereqReady}`);
+          } else if (prereqReqs.type === "all") {
+            prereqReady = prereqReqs.courses.every(subPrereq => {
+              if (subPrereq.type === "one") {
+                return subPrereq.courses.some(c => completed.includes(c));
+              } else if (typeof subPrereq === "string") {
+                return completed.includes(subPrereq);
+              }
+              return true;
+            });
+            console.log(`      ${prereq} prereq type "all" - ready: ${prereqReady}`);
+          } else if (typeof prereqReqs === "string") {
+            prereqReady = completed.includes(prereqReqs);
+            console.log(`      ${prereq} prereq type "string" - ready: ${prereqReady}`);
+          }
+        } else {
+          console.log(`      ${prereq} has no prereqs - ready: true`);
+        }
+
+        // If the prerequisite is ready and not already processed, add it to urgent (not future!)
+        if (prereqReady && !allProcessedCourses.has(prereq)) {
+          console.log(`      Adding ${prereq} to urgent courses`);
+          filteredUrgent.push({
+            type: "string",
+            course: prereq
+          });
+          urgentCourses.add(prereq);
+          allProcessedCourses.add(prereq);
+        } else {
+          console.log(`      Not adding ${prereq} - ready: ${prereqReady}, processed: ${allProcessedCourses.has(prereq)}`);
+        }
+      });
+    }
+  });
+
+  console.log('Final processed future courses:', processedFuture);
+  console.log('=== END MISSING PREREQS DEBUG ===');
+
+  res.json({ urgent: filteredUrgent, future: processedFuture, sections });
 });
 
 
