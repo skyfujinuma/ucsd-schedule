@@ -373,9 +373,9 @@ const Scheduler = ({ onBackToLanding }) => {
     return (
       <span>
         {professor} 
-        <span className="text-sm text-gray-600 ml-2">
+        <span className="text-sm text-slate-600 ml-2">
           {stars} ({rating}/5) 
-          <span className="text-xs text-gray-500 ml-1">
+          <span className="text-xs text-slate-500 ml-1">
             Difficulty: {difficulty}/5 • {numRatings} ratings
           </span>
         </span>
@@ -590,7 +590,7 @@ const Scheduler = ({ onBackToLanding }) => {
           {showDropdown && (
             <button
               onClick={() => toggleCourseExpansion(courseCode)}
-              className="text-gray-400 hover:text-gray-200 text-sm"
+              className="text-slate-400 hover:text-slate-200 text-sm"
             >
               {expandedCourses.has(courseCode) ? "▲" : "▼"}
             </button>
@@ -612,7 +612,7 @@ const Scheduler = ({ onBackToLanding }) => {
         <div className="flex items-center justify-between">
           <button
             onClick={() => setOpen(!open)}
-            className="text-left font-medium flex items-center gap-2 text-white hover:text-gray-300"
+            className="text-left font-medium flex items-center gap-2 text-white hover:text-slate-300"
           >
             <span>{courseLabel}</span>
             <span>{open ? "▲" : "▼"}</span>
@@ -628,7 +628,7 @@ const Scheduler = ({ onBackToLanding }) => {
                   {/* Lecture */}
                   {group.lecture && (
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-300">
+                      <span className="text-slate-300">
                         Lecture: {group.lecture.days.join(", ")}{" "}
                         {group.lecture.times.start} - {group.lecture.times.end} |{" "}
                         Prof: {formatProfessorWithRating(group.lecture.professor, group.lecture.professor_rating)} (Seats: {group.lecture.seatsRemaining ?? "N/A"})
@@ -657,14 +657,14 @@ const Scheduler = ({ onBackToLanding }) => {
                   {/* Discussions */}
                   {group.discussions.length > 0 && (
                     <div className="ml-4">
-                      <span className="text-gray-300">Discussions:</span>
+                      <span className="text-slate-300">Discussions:</span>
                       <ul className="list-disc ml-6">
                         {group.discussions.map((d, i) => {
                           const discussionSectionId = `${d.dept} ${d.code} ${d.sectionType} ${d.days.join('')} ${d.times.start}`;
                           
                           return (
                             <li key={i} className="flex items-center gap-2">
-                              <span className="text-gray-300">
+                              <span className="text-slate-300">
                                 {d.days.join(", ")} {d.times.start} - {d.times.end} ({d.buildingName} {d.roomNumber}) Seats:{" "}
                                 {d.seatsRemaining ?? "N/A"}
                               </span>
@@ -693,14 +693,14 @@ const Scheduler = ({ onBackToLanding }) => {
                   {/* Labs */}
                   {group.labs.length > 0 && (
                     <div className="ml-4">
-                      <span className="text-gray-300">Labs:</span>
+                      <span className="text-slate-300">Labs:</span>
                       <ul className="list-disc ml-6">
                         {group.labs.map((l, i) => {
                           const labSectionId = `${l.dept} ${l.code} ${l.sectionType} ${l.days.join('')} ${l.times.start}`;
                           
                           return (
                             <li key={i} className="flex items-center gap-2">
-                              <span className="text-gray-300">
+                              <span className="text-slate-300">
                                 {l.days.join(", ")} {l.times.start} - {l.times.end} ({l.buildingName} {l.roomNumber}) Seats:{" "}
                                 {l.seatsRemaining ?? "N/A"}
                               </span>
@@ -729,14 +729,14 @@ const Scheduler = ({ onBackToLanding }) => {
                   {/* Seminars */}
                   {group.seminars && group.seminars.length > 0 && (
                     <div className="ml-4">
-                      <span className="text-gray-300">Seminars:</span>
+                      <span className="text-slate-300">Seminars:</span>
                       <ul className="list-disc ml-6">
                         {group.seminars.map((s, i) => {
                           const seminarSectionId = `${s.dept} ${s.code} ${s.sectionType} ${s.days.join('')} ${s.times.start}`;
                           
                           return (
                             <li key={i} className="flex items-center gap-2">
-                              <span className="text-gray-300">
+                              <span className="text-slate-300">
                                 {s.days.join(", ")} {s.times.start} - {s.times.end} ({s.buildingName} {s.roomNumber}) Seats:{" "}
                                 {s.seatsRemaining ?? "N/A"}
                               </span>
@@ -779,7 +779,7 @@ const Scheduler = ({ onBackToLanding }) => {
     if (secForCourse.length === 0) {
       return (
         <div className="mt-2 ml-4">
-          <div className="text-gray-400 text-sm italic">
+          <div className="text-slate-400 text-sm italic">
             No available sections found this quarter
           </div>
         </div>
@@ -797,17 +797,17 @@ const Scheduler = ({ onBackToLanding }) => {
               {group.lecture && (
                 <div className="flex items-start gap-2">
                   <div className="flex-1">
-                    <div className="text-gray-300 text-sm">
+                    <div className="text-slate-300 text-sm">
                       Lecture: {group.lecture.days.join(", ")} {group.lecture.times.start} - {group.lecture.times.end} (Seats: {group.lecture.seatsRemaining ?? "N/A"})
                     </div>
                     {(() => {
                       const profInfo = formatProfessorMultiLine(group.professor, group.professorRating);
                       return (
                         <>
-                          <div className="text-gray-300 text-sm">
+                          <div className="text-slate-300 text-sm">
                             {profInfo.name} <span className="text-amber-400">{profInfo.stars}</span>
                           </div>
-                          <div className="text-gray-400 text-xs">
+                          <div className="text-slate-400 text-xs">
                             {profInfo.difficulty}
                           </div>
                         </>
@@ -816,7 +816,7 @@ const Scheduler = ({ onBackToLanding }) => {
                     
                     {/* Show discussion info under lecture when there's exactly one discussion */}
                     {group.discussions.length === 1 && (
-                      <div className="text-gray-300 text-sm mt-1">
+                      <div className="text-slate-300 text-sm mt-1">
                         Discussion: {group.discussions[0].days.join(", ")} {group.discussions[0].times.start} - {group.discussions[0].times.end} ({group.discussions[0].buildingName} {group.discussions[0].roomNumber}) (Seats: {group.discussions[0].seatsRemaining ?? "N/A"})
                       </div>
                     )}
@@ -850,14 +850,14 @@ const Scheduler = ({ onBackToLanding }) => {
               {/* Discussions - only show when there are multiple discussions */}
               {group.discussions.length > 1 && (
                 <div className="ml-4">
-                  <span className="text-gray-300 text-sm">Discussions:</span>
+                  <span className="text-slate-300 text-sm">Discussions:</span>
                   <ul className="list-disc ml-6">
                     {group.discussions.map((d, i) => {
                       const discussionSectionId = `${d.dept} ${d.code} ${d.sectionType} ${d.days.join('')} ${d.times.start}`;
                       
                       return (
                         <li key={i} className="flex items-center gap-2">
-                          <span className="text-gray-300 text-sm">
+                          <span className="text-slate-300 text-sm">
                             {d.days.join(", ")} {d.times.start} - {d.times.end} ({d.buildingName} {d.roomNumber}) Seats:{" "}
                             {d.seatsRemaining ?? "N/A"}
                           </span>
@@ -886,14 +886,14 @@ const Scheduler = ({ onBackToLanding }) => {
               {/* Labs */}
               {group.labs.length > 0 && (
                 <div className="ml-4">
-                  <span className="text-gray-300 text-sm">Labs:</span>
+                  <span className="text-slate-300 text-sm">Labs:</span>
                   <ul className="list-disc ml-6">
                     {group.labs.map((l, i) => {
                       const labSectionId = `${l.dept} ${l.code} ${l.sectionType} ${l.days.join('')} ${l.times.start}`;
                       
                       return (
                         <li key={i} className="flex items-center gap-2">
-                          <span className="text-gray-300 text-sm">
+                          <span className="text-slate-300 text-sm">
                             {l.days.join(", ")} {l.times.start} - {l.times.end} ({l.buildingName} {l.roomNumber}) Seats:{" "}
                             {l.seatsRemaining ?? "N/A"}
                           </span>
@@ -928,14 +928,14 @@ const Scheduler = ({ onBackToLanding }) => {
               {/* Seminars */}
               {group.seminars && group.seminars.length > 0 && (
                 <div className="ml-4">
-                  <span className="text-gray-300 text-sm">Seminars:</span>
+                  <span className="text-slate-300 text-sm">Seminars:</span>
                   <ul className="list-disc ml-6">
                     {group.seminars.map((s, i) => {
                       const seminarSectionId = `${s.dept} ${s.code} ${s.sectionType} ${s.days.join('')} ${s.times.start}`;
                       
                       return (
                         <li key={i} className="flex items-center gap-2">
-                          <span className="text-gray-300 text-sm">
+                          <span className="text-slate-300 text-sm">
                             {s.days.join(", ")} {s.times.start} - {s.times.end} ({s.buildingName} {s.roomNumber}) Seats:{" "}
                             {s.seatsRemaining ?? "N/A"}
                           </span>
@@ -968,32 +968,49 @@ const Scheduler = ({ onBackToLanding }) => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gray-900" style={{ display: 'block' }}>
-      <div className="w-full p-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-white">TACO - Course Scheduler</h1>
-          <button 
-            onClick={onBackToLanding}
-            className="text-blue-400 hover:text-blue-300 text-sm font-medium"
-          >
-            ← Back to Home
-          </button>
+    <div className="h-screen w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-y-auto">
+      {/* Navigation */}
+      <nav className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700/50">
+        <div className="flex justify-between items-center px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+          <div className="flex items-center space-x-4">
+            <a 
+              href="#home" 
+              onClick={(e) => { e.preventDefault(); onBackToLanding(); }}
+              className="text-2xl sm:text-3xl lg:text-4xl font-black hover:text-slate-300 transition-colors no-underline"
+              style={{ color: 'white', textDecoration: 'none' }}
+            >
+              taco
+            </a>
+          </div>
+          <div className="flex items-center space-x-3 sm:space-x-4 lg:space-x-6">
+            <a 
+              href="#home" 
+              onClick={(e) => { e.preventDefault(); onBackToLanding(); }}
+              className="text-sm sm:text-base hover:text-slate-300 transition-colors no-underline" 
+              style={{ color: 'white', textDecoration: 'none' }}
+            >
+              Home
+            </a>
+            <a href="#about" className="text-sm sm:text-base hover:text-slate-300 transition-colors no-underline" style={{ color: 'white', textDecoration: 'none' }}>About</a>
+          </div>
         </div>
+      </nav>
+
+      <div className="w-full py-4 sm:py-6 lg:py-8">
         
         {/* Responsive layout with three columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6 h-[calc(100vh-200px)] -mx-4">
+        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)] lg:h-[calc(100vh-220px)] px-2 sm:px-3 lg:px-4">
           {/* Left column - Form and Course Suggestions */}
-          <div className="lg:col-span-1 xl:col-span-1 bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 h-full overflow-y-auto">
+          <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 2xl:col-span-1 bg-slate-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-700/50 h-full overflow-y-auto">
         
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="block mb-1 font-medium text-gray-300">Major</label>
+              <label className="block mb-1 font-medium text-slate-300">Major</label>
               <select
                 value={form.major}
                 onChange={(e) => setForm({...form, major: e.target.value})}
-                className="w-full p-2 border border-gray-600 rounded bg-gray-700 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2 border border-slate-600/50 rounded bg-slate-700/50 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 required
               >
                 <option value="">Select a major</option>
@@ -1006,11 +1023,11 @@ const Scheduler = ({ onBackToLanding }) => {
             </div>
 
             <div>
-              <label className="block mb-1 font-medium text-gray-300">College</label>
+              <label className="block mb-1 font-medium text-slate-300">College</label>
               <select
                 value={form.college}
                 onChange={(e) => setForm({...form, college: e.target.value})}
-                className="w-full p-2 border border-gray-600 rounded bg-gray-700 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full p-2 border border-slate-600/50 rounded bg-slate-700/50 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 required
               >
                 <option value="">Select a college</option>
@@ -1026,12 +1043,12 @@ const Scheduler = ({ onBackToLanding }) => {
           </div>
 
           <div>
-            <label className="block mb-1 font-medium text-gray-300">Completed Courses (comma-separated)</label>
+            <label className="block mb-1 font-medium text-slate-300">Completed Courses (comma-separated)</label>
             <input
               type="text"
               value={form.completedCourses}
               onChange={(e) => setForm({...form, completedCourses: e.target.value})}
-              className="w-full p-2 border border-gray-600 rounded bg-gray-700 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full p-2 border border-slate-600/50 rounded bg-slate-700/50 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="e.g., CSE 8A, MATH 20A"
             />
           </div>
@@ -1042,9 +1059,9 @@ const Scheduler = ({ onBackToLanding }) => {
               id="honorsSequence"
               checked={form.honorsSequence}
               onChange={(e) => setForm({...form, honorsSequence: e.target.checked})}
-              className="mr-2 w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+              className="mr-2 w-4 h-4 text-blue-600 bg-slate-700/50 border-slate-600/50 rounded focus:ring-blue-500"
             />
-            <label htmlFor="honorsSequence" className="font-medium text-gray-300">
+            <label htmlFor="honorsSequence" className="font-medium text-slate-300">
               Honors Sequence
             </label>
           </div>
@@ -1066,7 +1083,7 @@ const Scheduler = ({ onBackToLanding }) => {
 
         {/* AI Filter Section */}
         {results.sections && results.sections.length > 0 && (
-          <div className="mt-6 p-4 bg-gray-700 rounded-lg border border-gray-600">
+          <div className="mt-6 p-4 bg-slate-700/50 rounded-lg border border-slate-600/50">
             <h3 className="text-lg font-semibold mb-3 text-white">🤖 AI Course Filter</h3>
             <form onSubmit={handleAIQuery} className="space-y-3">
               <input
@@ -1074,7 +1091,7 @@ const Scheduler = ({ onBackToLanding }) => {
                 value={aiQuery}
                 onChange={(e) => setAiQuery(e.target.value)}
                 placeholder="e.g., 'Show me easy math courses' or 'Find courses with good professors'"
-                className="w-full p-2 border border-gray-600 rounded bg-gray-800 text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
+                className="w-full p-2 border border-slate-600/50 rounded bg-slate-800/80 backdrop-blur-sm text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm"
               />
               <button
                 type="submit"
@@ -1123,7 +1140,7 @@ const Scheduler = ({ onBackToLanding }) => {
                                   <span className="text-green-200 text-sm">Selected:</span>
                                   <button
                                     onClick={() => resetUrgentCourseSelection(idx)}
-                                    className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded transition-colors"
+                                    className="text-xs bg-slate-600/50 hover:bg-slate-500/50 text-white px-2 py-1 rounded transition-colors"
                                   >
                                     Choose Again
                                   </button>
@@ -1138,7 +1155,7 @@ const Scheduler = ({ onBackToLanding }) => {
                                 </div>
                                   <button
                                     onClick={() => toggleCourseExpansion(selectedCourse)}
-                                    className="text-gray-400 hover:text-gray-200 text-sm"
+                                    className="text-slate-400 hover:text-slate-200 text-sm"
                                   >
                                     {expandedCourses.has(selectedCourse) ? "▲" : "▼"}
                                   </button>
@@ -1221,7 +1238,7 @@ const Scheduler = ({ onBackToLanding }) => {
                                 <span className="text-green-200 text-sm">Selected:</span>
                                 <button
                                   onClick={() => resetFutureCourseSelection(idx)}
-                                  className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded transition-colors"
+                                  className="text-xs bg-slate-600/50 hover:bg-slate-500/50 text-white px-2 py-1 rounded transition-colors"
                                 >
                                   Choose Again
                                 </button>
@@ -1239,7 +1256,7 @@ const Scheduler = ({ onBackToLanding }) => {
                                 </span>
                                 <button
                                   onClick={() => resetFutureCourseSelection(idx)}
-                                  className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded transition-colors"
+                                  className="text-xs bg-slate-600/50 hover:bg-slate-500/50 text-white px-2 py-1 rounded transition-colors"
                                 >
                                   Reset All
                                 </button>
@@ -1347,7 +1364,7 @@ const Scheduler = ({ onBackToLanding }) => {
                   return <CourseSection key={course} courseLabel={course} secForCourse={secForCourse} />;
                 })
               ) : (
-                <div className="p-3 bg-gray-700 border border-gray-600 rounded text-gray-300">
+                <div className="p-3 bg-slate-700/50 border border-slate-600/50 rounded text-slate-300">
                   No courses match your AI query.
                 </div>
               )}
@@ -1359,7 +1376,7 @@ const Scheduler = ({ onBackToLanding }) => {
           </div>
           
           {/* Middle column - Calendar */}
-          <div className="lg:col-span-1 xl:col-span-2 bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 h-full overflow-y-auto">
+          <div className="md:col-span-1 lg:col-span-1 xl:col-span-2 2xl:col-span-3 bg-slate-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-700/50 h-full overflow-y-auto">
             {results.sections && results.sections.length > 0 ? (
               <Calendar 
                 sections={results.sections} 
@@ -1367,7 +1384,7 @@ const Scheduler = ({ onBackToLanding }) => {
                 onToggleSection={toggleSectionInCalendar}
               />
             ) : (
-              <div className="flex items-center justify-center h-96 text-gray-400">
+              <div className="flex items-center justify-center h-96 text-slate-400">
                 <div className="text-center">
                   <div className="text-4xl mb-4">📅</div>
                   <p>Submit the form to see your course calendar</p>
@@ -1377,7 +1394,7 @@ const Scheduler = ({ onBackToLanding }) => {
           </div>
           
           {/* Right column - Electives */}
-          <div className="lg:col-span-1 xl:col-span-1 bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 h-full overflow-y-auto">
+          <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 2xl:col-span-1 bg-slate-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-700/50 h-full overflow-y-auto">
             <h2 className="text-xl font-semibold mb-3 text-white">Electives</h2>
             {(() => {
               // Get elective items from the processed urgent items
@@ -1399,7 +1416,7 @@ const Scheduler = ({ onBackToLanding }) => {
                             {selectedCoursesList.length > 0 && (
                               <button
                                 onClick={() => resetElectiveCourseSelection(idx)}
-                                className="text-xs bg-gray-600 hover:bg-gray-500 text-white px-2 py-1 rounded transition-colors"
+                                className="text-xs bg-slate-600/50 hover:bg-slate-500/50 text-white px-2 py-1 rounded transition-colors"
                               >
                                 Reset All
                               </button>
@@ -1408,6 +1425,35 @@ const Scheduler = ({ onBackToLanding }) => {
                           <div className="text-xs text-red-300 mb-2">
                             Selected: {selectedCoursesList.length} / {courseGroup.count || courseGroup.courses.length}
                           </div>
+                          
+                          {/* Selected courses - shown above */}
+                          {selectedCoursesList.length > 0 && (
+                            <div className="mb-3">
+                              <div className="text-xs text-green-200 mb-2">Selected:</div>
+                              <div className="space-y-1">
+                                {selectedCoursesList.map((selectedCourse, selectedIdx) => (
+                                  <div key={selectedIdx} className="p-2 bg-green-800 border border-green-500 rounded">
+                                    <div className="flex items-center justify-between">
+                                      <div className="text-sm font-medium text-green-100">
+                                        ✓ {selectedCourse}
+                                      </div>
+                                      <button
+                                        onClick={() => toggleCourseExpansion(selectedCourse)}
+                                        className="text-slate-400 hover:text-slate-200 text-sm"
+                                      >
+                                        {expandedCourses.has(selectedCourse) ? "▲" : "▼"}
+                                      </button>
+                                    </div>
+                                    {expandedCourses.has(selectedCourse) && (
+                                      <InlineCourseSections courseCode={selectedCourse} />
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Available course options */}
                           <div className="grid grid-cols-1 gap-2">
                             {courseGroup.courses.map((course, courseIdx) => {
                               const isSelected = selectedCoursesList.includes(course);
@@ -1416,49 +1462,25 @@ const Scheduler = ({ onBackToLanding }) => {
                                   key={courseIdx} 
                                   className={`p-2 border rounded cursor-pointer transition-all ${
                                     isSelected 
-                                      ? "bg-green-800 border-green-500 text-green-100" 
+                                      ? "bg-slate-600/50 border-gray-500 text-slate-300 opacity-50" 
                                       : "bg-red-800 border-red-500 text-red-100 hover:bg-red-700"
                                   }`}
                                   onClick={() => selectElectiveCourse(idx, course, "at_least")}
                                 >
                                   <div className="text-sm font-medium">
-                                    {isSelected ? "✓" : "○"} {course}
+                                    ○ {course}
                                   </div>
                                 </div>
                               );
                             })}
                           </div>
-                          
-                          {/* Major box for selected courses - appears when at least one course is selected */}
-                          {selectedCoursesList.length > 0 && (
-                            <div className="mt-4 p-4 bg-blue-900 border border-blue-600 rounded-lg">
-                              <div className="text-blue-200 text-sm font-medium mb-3">
-                                Selected Courses - Choose Sections:
-                              </div>
-                              <div className="space-y-3">
-                                {selectedCoursesList.map((selectedCourse, selectedIdx) => (
-                                  <div key={selectedIdx} className="p-3 bg-blue-800 border border-blue-500 rounded">
-                                    <div className="text-blue-100 font-medium mb-2">
-                                      {selectedCourse}
-                                    </div>
-                                    <div className="text-blue-300 text-sm">
-                                      {/* Placeholder for section dropdown - will be implemented later */}
-                                      <div className="p-2 bg-blue-700 rounded border border-blue-400">
-                                        <span className="text-blue-200">Sections will appear here</span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="text-gray-400 text-center py-8">
+                <div className="text-slate-400 text-center py-8">
                   <div className="text-4xl mb-4">📚</div>
                   <p>Elective courses will appear here when available</p>
                 </div>
