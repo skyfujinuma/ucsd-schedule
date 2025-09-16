@@ -50,7 +50,7 @@ const LandingPage = ({ onGetStarted }) => {
               onClick={onGetStarted}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 sm:px-8 sm:py-4 rounded-lg font-semibold transition-colors text-sm sm:text-base"
             >
-              Get Started with TACO
+              Get Started
             </button>
             <a
               href="https://github.com/skyfujinuma/ucsd-schedule"
@@ -83,7 +83,7 @@ const LandingPage = ({ onGetStarted }) => {
 
         {/* What is TACO Section */}
         <div className="w-full mx-auto mb-12 sm:mb-16 lg:mb-20">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4 sm:mb-6">What is TACO?</h2>
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4 sm:mb-6">What is taco?</h2>
           <p className="text-base sm:text-lg lg:text-xl text-slate-300 leading-relaxed mb-6 sm:mb-8">
             taco is an intelligent, AI-powered course planning assistant for UCSD students, 
             focused on clean design, real-time data, and user experience. It analyzes 

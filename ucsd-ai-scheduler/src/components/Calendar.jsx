@@ -59,7 +59,37 @@ const Calendar = ({ sections = [], selectedSections = new Set(), onToggleSection
     timeSlots.push(hour * 60);
   }
 
-  const getEventStyle = (event) => {
+  // Function to detect overlapping events and calculate stacking positions
+  const calculateEventStacking = (dayEvents) => {
+    const stackedEvents = [];
+    
+    dayEvents.forEach(event => {
+      const overlappingEvents = dayEvents.filter(otherEvent => {
+        if (otherEvent.id === event.id) return false;
+        // Check if events overlap in time
+        return (event.startTime < otherEvent.endTime && event.endTime > otherEvent.startTime);
+      });
+      
+      // Find the highest stack level among overlapping events
+      let stackLevel = 0;
+      overlappingEvents.forEach(overlappingEvent => {
+        const existingStack = stackedEvents.find(se => se.id === overlappingEvent.id);
+        if (existingStack && existingStack.stackLevel >= stackLevel) {
+          stackLevel = existingStack.stackLevel + 1;
+        }
+      });
+      
+      stackedEvents.push({
+        ...event,
+        stackLevel: stackLevel,
+        totalStacks: Math.max(stackLevel + 1, overlappingEvents.length + 1)
+      });
+    });
+    
+    return stackedEvents;
+  };
+
+  const getEventStyle = (event, stackLevel = 0, totalStacks = 1) => {
     // Create a simple hash from the course code to get consistent colors
     const courseCode = event.course;
     const hash = courseCode.split('').reduce((a, b) => {
@@ -84,20 +114,25 @@ const Calendar = ({ sections = [], selectedSections = new Set(), onToggleSection
     const colorIndex = Math.abs(hash) % colorPalette.length;
     const color = colorPalette[colorIndex];
     
+    // Calculate stacking layout (horizontal only, no vertical offset)
+    const stackWidth = totalStacks > 1 ? `${100 / totalStacks}%` : '100%';
+    const stackLeft = totalStacks > 1 ? `${(stackLevel * 100) / totalStacks}%` : '0';
+    
     return {
       position: 'absolute',
-      left: '0',
-      right: '0',
+      left: stackLeft,
+      width: stackWidth,
       borderRadius: '4px',
       fontSize: '12px',
       padding: '4px',
       borderLeft: `4px solid ${color.border}`,
-      zIndex: 10,
+      zIndex: 10 + stackLevel,
       backgroundColor: color.bg,
       color: color.text,
       top: `${((event.startTime - 420) / 60) * 60}px`,
       height: `${((event.endTime - event.startTime) / 60) * 60}px`,
-      minHeight: '30px'
+      minHeight: '30px',
+      boxShadow: stackLevel > 0 ? '2px 2px 4px rgba(0,0,0,0.3)' : 'none'
     };
   };
 
@@ -192,19 +227,25 @@ const Calendar = ({ sections = [], selectedSections = new Set(), onToggleSection
                 ))}
                 
                 {/* Events for this day */}
-                {events
-                  .filter(event => event.day === day)
-                  .map(event => (
+                {(() => {
+                  const dayEvents = events.filter(event => event.day === day);
+                  const stackedEvents = calculateEventStacking(dayEvents);
+                  
+                  return stackedEvents.map(event => (
                     <div
                       key={event.id}
-                      style={getEventStyle(event)}
-                      title={`${event.course} ${event.type} - ${formatProfessorWithRating(event.professor, event.professorRating)}`}
+                      style={getEventStyle(event, event.stackLevel, event.totalStacks)}
+                      title={`${event.course} ${event.type} - ${formatProfessorWithRating(event.professor, event.professorRating)}${event.stackLevel > 0 ? ' (Stacked due to conflict)' : ''}`}
                     >
                       <div className="text-2xs font-medium truncate">{event.course}</div>
                       <div className="text-2xs truncate">{event.type}</div>
                       <div className="text-2xs truncate">{formatTime(event.startTime)} - {formatTime(event.endTime)}</div>
+                      {event.stackLevel > 0 && (
+                        <div className="text-2xs opacity-75">⚠️ Conflict</div>
+                      )}
                     </div>
-                  ))}
+                  ));
+                })()}
               </div>
             ))}
           </div>
@@ -229,6 +270,25 @@ const Calendar = ({ sections = [], selectedSections = new Set(), onToggleSection
               </div>
             ))}
           </div>
+          {(() => {
+            const hasConflicts = events.some(event => {
+              const dayEvents = events.filter(e => e.day === event.day);
+              return dayEvents.some(otherEvent => 
+                otherEvent.id !== event.id && 
+                event.startTime < otherEvent.endTime && 
+                event.endTime > otherEvent.startTime
+              );
+            });
+            
+            return hasConflicts && (
+              <div className="mt-3 p-2 bg-orange-900/30 border border-orange-600 rounded text-sm">
+                <div className="flex items-center gap-2 text-orange-300">
+                  <span>⚠️</span>
+                  <span>There are time conflicts between the sections you're trying to add</span>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>

@@ -104,6 +104,9 @@ const Scheduler = ({ onBackToLanding }) => {
   // State for course section dropdowns
   const [expandedCourses, setExpandedCourses] = useState(new Set());
   
+  // Conflict detection state
+  const [conflictPopup, setConflictPopup] = useState(null);
+  
   // Toggle course section expansion
   const toggleCourseExpansion = (courseCode) => {
     setExpandedCourses(prev => {
@@ -127,6 +130,65 @@ const Scheduler = ({ onBackToLanding }) => {
       const sectionId = `${section.dept} ${section.code} ${section.sectionType} ${section.days.join('')} ${section.times.start}`;
       return selectedSections.has(sectionId);
     });
+  };
+
+  // Check if a course has any available sections in the current quarter
+  const hasAvailableSections = (courseCode) => {
+    if (!results.sections) return false;
+    return results.sections.some(section => {
+      const sectionCourseCode = `${section.dept} ${section.code}`;
+      return sectionCourseCode === courseCode;
+    });
+  };
+
+  // Check for time conflicts between sections
+  const checkTimeConflict = (newSection, existingSection) => {
+    // Check if sections have overlapping days
+    const hasOverlappingDays = newSection.days.some(day => existingSection.days.includes(day));
+    if (!hasOverlappingDays) return false;
+
+    // Check if sections have overlapping times
+    const newStart = newSection.times.start;
+    const newEnd = newSection.times.end;
+    const existingStart = existingSection.times.start;
+    const existingEnd = existingSection.times.end;
+
+    // Convert time strings to minutes for easier comparison
+    const timeToMinutes = (timeStr) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const newStartMin = timeToMinutes(newStart);
+    const newEndMin = timeToMinutes(newEnd);
+    const existingStartMin = timeToMinutes(existingStart);
+    const existingEndMin = timeToMinutes(existingEnd);
+
+    // Check for overlap: new section starts before existing ends AND new section ends after existing starts
+    return newStartMin < existingEndMin && newEndMin > existingStartMin;
+  };
+
+  // Find conflicting sections
+  const findConflictingSections = (sectionToAdd) => {
+    if (!results.sections) return [];
+    
+    const conflicts = [];
+    selectedSections.forEach(selectedSectionId => {
+      // Find the section data for the selected section
+      const existingSection = results.sections.find(section => {
+        const sectionId = `${section.dept} ${section.code} ${section.sectionType} ${section.days.join('')} ${section.times.start}`;
+        return sectionId === selectedSectionId;
+      });
+
+      if (existingSection && checkTimeConflict(sectionToAdd, existingSection)) {
+        conflicts.push({
+          sectionId: selectedSectionId,
+          section: existingSection
+        });
+      }
+    });
+
+    return conflicts;
   };
   
   useEffect(() => {
@@ -268,8 +330,8 @@ const Scheduler = ({ onBackToLanding }) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ 
-          query: aiQuery,
-          sections: results.sections || []
+          userQuery: aiQuery,
+          courses: results.sections || []
         }),
       });
       
@@ -413,8 +475,80 @@ const Scheduler = ({ onBackToLanding }) => {
       if (associatedDiscussionId) {
         newSelected.delete(associatedDiscussionId);
       }
+      setSelectedSections(newSelected);
     } else {
-      // Add the section and its associated sections
+      // Check for conflicts before adding
+      console.log('Looking for section with ID:', sectionId);
+      const sectionToAdd = results.sections.find(section => {
+        const id = `${section.dept} ${section.code} ${section.sectionType} ${section.days.join('')} ${section.times.start}`;
+        return id === sectionId;
+      });
+
+      if (sectionToAdd) {
+        console.log('Found section to add:', sectionToAdd);
+        console.log('Currently selected sections:', Array.from(selectedSections));
+        
+        // Find all sections that will be added (main section + associated sections)
+        const sectionsToAdd = [sectionToAdd];
+        
+        // Add associated lecture if provided
+        if (associatedLectureId) {
+          const associatedLecture = results.sections.find(section => {
+            const id = `${section.dept} ${section.code} ${section.sectionType} ${section.days.join('')} ${section.times.start}`;
+            return id === associatedLectureId;
+          });
+          if (associatedLecture) {
+            sectionsToAdd.push(associatedLecture);
+            console.log('Associated lecture to add:', associatedLecture);
+          }
+        }
+        
+        // Add associated discussion if provided
+        if (associatedDiscussionId) {
+          const associatedDiscussion = results.sections.find(section => {
+            const id = `${section.dept} ${section.code} ${section.sectionType} ${section.days.join('')} ${section.times.start}`;
+            return id === associatedDiscussionId;
+          });
+          if (associatedDiscussion) {
+            sectionsToAdd.push(associatedDiscussion);
+            console.log('Associated discussion to add:', associatedDiscussion);
+          }
+        }
+        
+        console.log('All sections to add:', sectionsToAdd);
+        
+        // Check for conflicts with all sections that will be added
+        let allConflicts = [];
+        sectionsToAdd.forEach(section => {
+          const conflicts = findConflictingSections(section);
+          allConflicts = allConflicts.concat(conflicts);
+        });
+        
+        // Remove duplicate conflicts
+        const uniqueConflicts = allConflicts.filter((conflict, index, self) => 
+          index === self.findIndex(c => c.sectionId === conflict.sectionId)
+        );
+        
+        console.log('Found conflicts:', uniqueConflicts);
+        
+        if (uniqueConflicts.length > 0) {
+          console.log('Showing conflict popup');
+          // Show conflict popup with all sections that will be added
+          setConflictPopup({
+            sectionsToAdd: sectionsToAdd,
+            sectionId,
+            associatedLectureId,
+            associatedDiscussionId,
+            conflicts: uniqueConflicts
+          });
+          return;
+        }
+      } else {
+        console.log('Section not found for ID:', sectionId);
+        console.log('Available sections:', results.sections.map(s => `${s.dept} ${s.code} ${s.sectionType} ${s.days.join('')} ${s.times.start}`));
+      }
+
+      // No conflicts, add the section and its associated sections
       newSelected.add(sectionId);
       if (associatedLectureId) {
         newSelected.add(associatedLectureId);
@@ -422,8 +556,32 @@ const Scheduler = ({ onBackToLanding }) => {
       if (associatedDiscussionId) {
         newSelected.add(associatedDiscussionId);
       }
+      setSelectedSections(newSelected);
     }
+  };
+
+  // Handle conflict popup actions
+  const handleConflictAddAnyway = () => {
+    if (!conflictPopup) return;
+    
+    const { sectionId, associatedLectureId, associatedDiscussionId } = conflictPopup;
+    const newSelected = new Set(selectedSections);
+    
+    // Add the section and its associated sections
+    newSelected.add(sectionId);
+    if (associatedLectureId) {
+      newSelected.add(associatedLectureId);
+    }
+    if (associatedDiscussionId) {
+      newSelected.add(associatedDiscussionId);
+    }
+    
     setSelectedSections(newSelected);
+    setConflictPopup(null);
+  };
+
+  const handleConflictCancel = () => {
+    setConflictPopup(null);
   };
 
   // Handle course selection from "choose one" and "at_least" groups for urgent courses
@@ -576,18 +734,21 @@ const Scheduler = ({ onBackToLanding }) => {
     const courseText = renderCourseItem(item);
     const courseCode = item.type === "string" ? item.course : courseText;
     const hasSections = hasSelectedSections(courseCode);
+    const hasAvailable = hasAvailableSections(courseCode);
     
     return (
       <>
         <div className="flex items-center justify-between">
           <div className={`${
-            hasSections 
-              ? "text-green-100" 
-              : "text-white"
+            !hasAvailable
+              ? "text-slate-500" // Grey out if no sections available
+              : hasSections 
+                ? "text-green-100" 
+                : "text-white"
           }`}>
             • {courseText}
           </div>
-          {showDropdown && (
+          {showDropdown && hasAvailable && (
             <button
               onClick={() => toggleCourseExpansion(courseCode)}
               className="text-slate-400 hover:text-slate-200 text-sm"
@@ -596,7 +757,7 @@ const Scheduler = ({ onBackToLanding }) => {
             </button>
           )}
         </div>
-        {showDropdown && expandedCourses.has(courseCode) && (
+        {showDropdown && hasAvailable && expandedCourses.has(courseCode) && (
           <InlineCourseSections courseCode={courseCode} />
         )}
       </>
@@ -1081,6 +1242,7 @@ const Scheduler = ({ onBackToLanding }) => {
           </div>
         )}
 
+
         {/* AI Filter Section */}
         {results.sections && results.sections.length > 0 && (
           <div className="mt-6 p-4 bg-slate-700/50 rounded-lg border border-slate-600/50">
@@ -1147,20 +1309,24 @@ const Scheduler = ({ onBackToLanding }) => {
                                 </div>
                                 <div className="flex items-center justify-between">
                                   <div className={`font-medium ${
-                                    hasSelectedSections(selectedCourse) 
-                                      ? "text-green-100" 
-                                      : "text-red-100"
+                                    !hasAvailableSections(selectedCourse)
+                                      ? "text-slate-500" // Grey out if no sections available
+                                      : hasSelectedSections(selectedCourse) 
+                                        ? "text-green-100" 
+                                        : "text-red-100"
                                   }`}>
                                   • {selectedCourse}
                                 </div>
-                                  <button
-                                    onClick={() => toggleCourseExpansion(selectedCourse)}
-                                    className="text-slate-400 hover:text-slate-200 text-sm"
-                                  >
-                                    {expandedCourses.has(selectedCourse) ? "▲" : "▼"}
-                                  </button>
+                                  {hasAvailableSections(selectedCourse) && (
+                                    <button
+                                      onClick={() => toggleCourseExpansion(selectedCourse)}
+                                      className="text-slate-400 hover:text-slate-200 text-sm"
+                                    >
+                                      {expandedCourses.has(selectedCourse) ? "▲" : "▼"}
+                                    </button>
+                                  )}
                                 </div>
-                                {expandedCourses.has(selectedCourse) && (
+                                {expandedCourses.has(selectedCourse) && hasAvailableSections(selectedCourse) && (
                                   <InlineCourseSections courseCode={selectedCourse} />
                                 )}
                               </div>
@@ -1177,17 +1343,22 @@ const Scheduler = ({ onBackToLanding }) => {
                                   </div>
                                 )}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                                  {courseGroup.courses.map((course, courseIdx) => (
-                                    <div 
-                                      key={courseIdx} 
-                                      className={`text-sm cursor-pointer hover:bg-red-800 p-1 rounded transition-colors ${
-                                        isChooseOne ? "hover:text-red-100" : ""
-                                      }`}
-                                      onClick={isChooseOne ? () => selectUrgentCourse(idx, course, "one") : undefined}
-                                    >
-                                      • {course}
-                                    </div>
-                                  ))}
+                                  {courseGroup.courses.map((course, courseIdx) => {
+                                    const hasAvailable = hasAvailableSections(course);
+                                    return (
+                                      <div 
+                                        key={courseIdx} 
+                                        className={`text-sm p-1 rounded transition-colors ${
+                                          !hasAvailable
+                                            ? "text-slate-500 cursor-not-allowed" // Grey out if no sections available
+                                            : `cursor-pointer hover:bg-red-800 ${isChooseOne ? "hover:text-red-100" : ""}`
+                                        }`}
+                                        onClick={hasAvailable && isChooseOne ? () => selectUrgentCourse(idx, course, "one") : undefined}
+                                      >
+                                        • {course}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
@@ -1434,17 +1605,23 @@ const Scheduler = ({ onBackToLanding }) => {
                                 {selectedCoursesList.map((selectedCourse, selectedIdx) => (
                                   <div key={selectedIdx} className="p-2 bg-green-800 border border-green-500 rounded">
                                     <div className="flex items-center justify-between">
-                                      <div className="text-sm font-medium text-green-100">
+                                      <div className={`text-sm font-medium ${
+                                        !hasAvailableSections(selectedCourse)
+                                          ? "text-slate-500" // Grey out if no sections available
+                                          : "text-green-100"
+                                      }`}>
                                         ✓ {selectedCourse}
                                       </div>
-                                      <button
-                                        onClick={() => toggleCourseExpansion(selectedCourse)}
-                                        className="text-slate-400 hover:text-slate-200 text-sm"
-                                      >
-                                        {expandedCourses.has(selectedCourse) ? "▲" : "▼"}
-                                      </button>
+                                      {hasAvailableSections(selectedCourse) && (
+                                        <button
+                                          onClick={() => toggleCourseExpansion(selectedCourse)}
+                                          className="text-slate-400 hover:text-slate-200 text-sm"
+                                        >
+                                          {expandedCourses.has(selectedCourse) ? "▲" : "▼"}
+                                        </button>
+                                      )}
                                     </div>
-                                    {expandedCourses.has(selectedCourse) && (
+                                    {expandedCourses.has(selectedCourse) && hasAvailableSections(selectedCourse) && (
                                       <InlineCourseSections courseCode={selectedCourse} />
                                     )}
                                   </div>
@@ -1457,15 +1634,18 @@ const Scheduler = ({ onBackToLanding }) => {
                           <div className="grid grid-cols-1 gap-2">
                             {courseGroup.courses.map((course, courseIdx) => {
                               const isSelected = selectedCoursesList.includes(course);
+                              const hasAvailable = hasAvailableSections(course);
                               return (
                                 <div 
                                   key={courseIdx} 
-                                  className={`p-2 border rounded cursor-pointer transition-all ${
-                                    isSelected 
-                                      ? "bg-slate-600/50 border-gray-500 text-slate-300 opacity-50" 
-                                      : "bg-red-800 border-red-500 text-red-100 hover:bg-red-700"
+                                  className={`p-2 border rounded transition-all ${
+                                    !hasAvailable
+                                      ? "bg-slate-700/50 border-slate-500 text-slate-500 cursor-not-allowed" // Grey out if no sections available
+                                      : isSelected 
+                                        ? "bg-slate-600/50 border-gray-500 text-slate-300 opacity-50 cursor-pointer" 
+                                        : "bg-red-800 border-red-500 text-red-100 hover:bg-red-700 cursor-pointer"
                                   }`}
-                                  onClick={() => selectElectiveCourse(idx, course, "at_least")}
+                                  onClick={hasAvailable ? () => selectElectiveCourse(idx, course, "at_least") : undefined}
                                 >
                                   <div className="text-sm font-medium">
                                     ○ {course}
@@ -1489,6 +1669,82 @@ const Scheduler = ({ onBackToLanding }) => {
           </div>
         </div>
       </div>
+
+      {/* Conflict Popup */}
+      {conflictPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-slate-800 border border-slate-600 rounded-lg p-6 max-w-lg mx-4">
+            <h3 className="text-lg font-semibold text-white mb-4">⚠️ Schedule Conflict Detected</h3>
+            
+            <div className="mb-4">
+              <p className="text-slate-300 mb-3">
+                The following sections you're trying to add conflict with existing sections:
+              </p>
+              
+              {/* Show sections being added */}
+              <div className="mb-4">
+                <div className="text-sm font-medium text-blue-300 mb-2">Sections to be added:</div>
+                <div className="space-y-2">
+                  {conflictPopup.sectionsToAdd.map((section, idx) => {
+                    const hasConflicts = conflictPopup.conflicts.some(conflict => 
+                      findConflictingSections(section).some(c => c.sectionId === conflict.sectionId)
+                    );
+                    return (
+                      <div key={idx} className={`rounded p-3 ${
+                        hasConflicts 
+                          ? "bg-orange-900/50 border border-orange-600" 
+                          : "bg-slate-700"
+                      }`}>
+                        <div className="text-sm font-medium text-blue-300 mb-1">
+                          {section.dept} {section.code} {section.sectionType}
+                        </div>
+                        <div className="text-xs text-slate-400">
+                          {section.days.join(", ")} {section.times.start} - {section.times.end}
+                        </div>
+                        {hasConflicts && (
+                          <div className="text-xs text-orange-300 mt-1">⚠️ Has conflicts</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Show conflicting existing sections */}
+              <div>
+                <div className="text-sm font-medium text-red-300 mb-2">Conflicting existing sections:</div>
+                <div className="space-y-2">
+                  {conflictPopup.conflicts.map((conflict, idx) => (
+                    <div key={idx} className="bg-red-900/50 border border-red-600 rounded p-3">
+                      <div className="text-sm font-medium text-red-300 mb-1">
+                        {conflict.section.dept} {conflict.section.code} {conflict.section.sectionType}
+                      </div>
+                      <div className="text-xs text-red-200">
+                        {conflict.section.days.join(", ")} {conflict.section.times.start} - {conflict.section.times.end}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleConflictCancel}
+                className="flex-1 bg-slate-600 hover:bg-slate-700 text-white py-2 px-4 rounded transition-colors"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={handleConflictAddAnyway}
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded transition-colors"
+              >
+                Add Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
