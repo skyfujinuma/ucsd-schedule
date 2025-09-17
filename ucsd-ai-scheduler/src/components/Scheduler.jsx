@@ -331,7 +331,9 @@ const Scheduler = ({ onBackToLanding }) => {
         },
         body: JSON.stringify({ 
           userQuery: aiQuery,
-          courses: results.sections || []
+          courses: results.sections || [],
+          completedCourses: form.completedCourses.split(',').map(course => course.trim()).filter(course => course),
+          major: "CS26" // Hardcoded for now since only CS26 is available
         }),
       });
       
@@ -1124,7 +1126,7 @@ const Scheduler = ({ onBackToLanding }) => {
             </div>
           );
         })}
-      </div>
+      </div>    
     );
   };
 
@@ -1526,13 +1528,46 @@ const Scheduler = ({ onBackToLanding }) => {
         {aiResults && (
           <div className="mt-6">
             <h2 className="text-xl font-semibold mb-3 text-white">🤖 AI Filtered Results</h2>
+            
+            {/* AI Summary */}
+            {aiResults.summary && (
+              <div className="mb-4 p-3 bg-purple-900/30 border border-purple-600 rounded text-purple-200 text-sm">
+                {aiResults.summary}
+              </div>
+            )}
+            
+            {/* AI Recommendations */}
+            {aiResults.recommendations && (
+              <div className="mb-4 p-3 bg-blue-900/30 border border-blue-600 rounded text-blue-200 text-sm">
+                <strong>Recommendations:</strong> {aiResults.recommendations}
+              </div>
+            )}
+            
             <div className="space-y-2">
-              {aiResults.courses && aiResults.courses.length > 0 ? (
-                aiResults.courses.map((course, idx) => {
+              {aiResults.filtered_courses && aiResults.filtered_courses.length > 0 ? (
+                aiResults.filtered_courses.map((course, idx) => {
                   const secForCourse = results.sections.filter(s => 
-                    `${s.dept} ${s.code}` === course
+                    `${s.dept} ${s.code}` === course.course_code
                   );
-                  return <CourseSection key={course} courseLabel={course} secForCourse={secForCourse} />;
+                  return (
+                    <div key={course.course_code} className="p-3 bg-slate-700/50 border border-slate-600/50 rounded">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="font-medium text-white">{course.course_code}</div>
+                        <div className="text-sm text-slate-400">
+                          Relevance: {Math.round(course.relevance_score * 100)}%
+                        </div>
+                      </div>
+                      <div className="text-sm text-slate-300 mb-2">{course.reason}</div>
+                      {course.professor_rating && (
+                        <div className="text-xs text-slate-400 mb-2">
+                          Professor: {course.professor} | Rating: {course.professor_rating.rating}/5 | 
+                          Difficulty: {course.professor_rating.difficulty}/5 | 
+                          Would take again: {course.professor_rating.would_take_again}%
+                        </div>
+                      )}
+                      <CourseSection courseLabel={course.course_code} secForCourse={secForCourse} />
+                    </div>
+                  );
                 })
               ) : (
                 <div className="p-3 bg-slate-700/50 border border-slate-600/50 rounded text-slate-300">
