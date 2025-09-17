@@ -9,16 +9,20 @@ const findPrereqGroup = (prereq, allPrereqs) => {
     {
       group1: ['CSE 21', 'MATH 154', 'MATH 158', 'MATH 184', 'MATH 188'],
       group2: ['CSE 12', 'DSC 30']
+    },
+    // CSE 100/CSE 100R: choose one
+    {
+      group1: ['CSE 100', 'CSE 100R']
     }
   ];
   
   // Check if the prerequisite is part of any known group
   for (const group of prereqGroups) {
-    if (group.group1.includes(prereq)) {
+    if (group.group1 && group.group1.includes(prereq)) {
       // Return all group1 courses that are in the missing prerequisites
       return group.group1.filter(course => allPrereqs.includes(course));
     }
-    if (group.group2.includes(prereq)) {
+    if (group.group2 && group.group2.includes(prereq)) {
       // Return all group2 courses that are in the missing prerequisites
       return group.group2.filter(course => allPrereqs.includes(course));
     }
@@ -139,6 +143,18 @@ const Scheduler = ({ onBackToLanding }) => {
       const sectionCourseCode = `${section.dept} ${section.code}`;
       return sectionCourseCode === courseCode;
     });
+  };
+
+  // Helper function to check if a course is AI-filtered
+  const isAIFiltered = (courseCode) => {
+    if (!aiResults || !aiResults.filtered_courses) return false;
+    return aiResults.filtered_courses.some(course => course.course_code === courseCode);
+  };
+
+  // Helper function to get AI data for a course
+  const getAIData = (courseCode) => {
+    if (!aiResults || !aiResults.filtered_courses) return null;
+    return aiResults.filtered_courses.find(course => course.course_code === courseCode);
   };
 
   // Check for time conflicts between sections
@@ -324,6 +340,65 @@ const Scheduler = ({ onBackToLanding }) => {
     setError(null);
     
     try {
+      // Group sections by course and professor to send the best professor rating for each course
+      const groupedCourses = {};
+      
+      if (results.sections) {
+        results.sections.forEach(section => {
+          const courseCode = `${section.dept} ${section.code}`;
+          
+          if (!groupedCourses[courseCode]) {
+            groupedCourses[courseCode] = {
+              dept: section.dept,
+              code: section.code,
+              title: section.title,
+              units: section.units,
+              description: section.description,
+              professor: section.professor,
+              professor_rating: section.professor_rating,
+              sectionType: 'LE' // Default to lecture
+            };
+          } else {
+            // Keep the professor with the highest rating
+            if (section.professor_rating && section.professor_rating.rating > 
+                (groupedCourses[courseCode].professor_rating?.rating || 0)) {
+              groupedCourses[courseCode].professor = section.professor;
+              groupedCourses[courseCode].professor_rating = section.professor_rating;
+            }
+          }
+        });
+      }
+
+      // Also include electives that have available sections
+      if (results.electives) {
+        results.electives.forEach(electiveGroup => {
+          electiveGroup.courses.forEach(courseCode => {
+            // Only include if it has available sections and isn't already included
+            if (hasAvailableSections(courseCode) && !groupedCourses[courseCode]) {
+              // Find the section data for this elective course
+              const electiveSection = results.sections?.find(section => 
+                `${section.dept} ${section.code}` === courseCode
+              );
+              
+              if (electiveSection) {
+                groupedCourses[courseCode] = {
+                  dept: electiveSection.dept,
+                  code: electiveSection.code,
+                  title: electiveSection.title,
+                  units: electiveSection.units,
+                  description: electiveSection.description,
+                  professor: electiveSection.professor,
+                  professor_rating: electiveSection.professor_rating,
+                  sectionType: 'LE' // Default to lecture
+                };
+              }
+            }
+          });
+        });
+      }
+      
+      const courseData = Object.values(groupedCourses);
+      
       const response = await fetch("http://localhost:3001/api/ai-filter-courses", {
         method: "POST",
         headers: {
@@ -331,7 +406,7 @@ const Scheduler = ({ onBackToLanding }) => {
         },
         body: JSON.stringify({ 
           userQuery: aiQuery,
-          courses: results.sections || [],
+          courses: courseData,
           completedCourses: form.completedCourses.split(',').map(course => course.trim()).filter(course => course),
           major: "CS26" // Hardcoded for now since only CS26 is available
         }),
@@ -732,25 +807,32 @@ const Scheduler = ({ onBackToLanding }) => {
   }
 
   // Component for rendering singular courses with optional dropdown arrows
-  const SingularCourseItem = ({ item, showDropdown = true }) => {
+  const SingularCourseItem = ({ item, showDropdown = true, isFutureCourse = false }) => {
     const courseText = renderCourseItem(item);
     const courseCode = item.type === "string" ? item.course : courseText;
     const hasSections = hasSelectedSections(courseCode);
     const hasAvailable = hasAvailableSections(courseCode);
+    const isAIFilteredCourse = isAIFiltered(courseCode);
     
     return (
       <>
         <div className="flex items-center justify-between">
           <div className={`${
             !hasAvailable
-              ? "text-slate-500" // Grey out if no sections available
+              ? isAIFilteredCourse
+                ? "text-purple-400" // AI filtered but no sections
+                : "text-slate-500" // Grey out if no sections available
               : hasSections 
-                ? "text-green-100" 
-                : "text-white"
+                ? isAIFilteredCourse
+                  ? "text-purple-200" // AI filtered and has sections
+                  : "text-green-100" // Has sections but not AI filtered
+                : isAIFilteredCourse
+                  ? "text-purple-300" // AI filtered but no selected sections
+                  : "text-white" // No selected sections and not AI filtered
           }`}>
             • {courseText}
           </div>
-          {showDropdown && hasAvailable && (
+          {showDropdown && (hasAvailable || isAIFilteredCourse) && (
             <button
               onClick={() => toggleCourseExpansion(courseCode)}
               className="text-slate-400 hover:text-slate-200 text-sm"
@@ -759,10 +841,476 @@ const Scheduler = ({ onBackToLanding }) => {
             </button>
           )}
         </div>
-        {showDropdown && hasAvailable && expandedCourses.has(courseCode) && (
-          <InlineCourseSections courseCode={courseCode} />
+        {showDropdown && expandedCourses.has(courseCode) && (
+          hasAvailable ? (
+            <InlineCourseSections courseCode={courseCode} isFutureCourse={isFutureCourse} />
+          ) : isAIFilteredCourse ? (
+            <InlineAIReasoning courseCode={courseCode} />
+          ) : null
         )}
       </>
+    );
+  };
+
+  // Component for displaying AI reasoning without sections (for future courses)
+  const InlineAIReasoning = ({ courseCode }) => {
+    const aiData = getAIData(courseCode);
+    
+    if (!aiData) {
+      return null;
+    }
+
+    return (
+      <div className="mt-2 ml-4">
+        <div className="p-3 bg-purple-900/30 border border-purple-600/50 rounded">
+          <div className="flex justify-between items-start mb-2">
+            <div className="text-purple-200 text-sm font-medium">🤖 AI Recommendation</div>
+            <div className="text-purple-300 text-xs">
+              Relevance: {Math.round(aiData.relevance_score * 100)}%
+            </div>
+          </div>
+          <div className="text-purple-100 text-sm mb-2">{aiData.reason}</div>
+          {aiData.professor_rating && (
+            <div className="text-purple-200 text-xs">
+              Professor: {aiData.professor} | Rating: {aiData.professor_rating.rating}/5 | 
+              Difficulty: {aiData.professor_rating.difficulty}/5 | 
+              Would take again: {aiData.professor_rating.would_take_again}%
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Component for displaying missing prerequisites for elective courses
+  const ElectivePrerequisites = ({ courseCode, showCheckmark = false }) => {
+    const [missingPrereqs, setMissingPrereqs] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    
+    useEffect(() => {
+      async function fetchPrerequisites() {
+        try {
+          setError(null);
+          const response = await fetch(`http://localhost:3001/api/prereqs/${courseCode.replace(' ', '_')}`);
+          if (!response.ok) {
+            setMissingPrereqs([]);
+            setLoading(false);
+            return;
+          }
+          
+          const prereqData = await response.json();
+          if (!prereqData.prereqs) {
+            setMissingPrereqs([]);
+            setLoading(false);
+            return;
+          }
+          
+          // Check which prerequisites are missing based on completed courses
+          const completed = form.completedCourses.split(',').map(c => c.trim()).filter(c => c);
+          const missing = [];
+          
+          const prereq = prereqData.prereqs;
+          
+          if (prereq.type === "one") {
+            const anyCompleted = prereq.courses.some(c => completed.includes(c));
+            if (!anyCompleted) {
+              missing.push(...prereq.courses.filter(c => !completed.includes(c)));
+            }
+          } else if (prereq.type === "all") {
+            for (const subPrereq of prereq.courses) {
+              if (subPrereq.type === "one") {
+                const anyCompleted = subPrereq.courses.some(c => completed.includes(c));
+                if (!anyCompleted) {
+                  missing.push(...subPrereq.courses.filter(c => !completed.includes(c)));
+                }
+              } else if (typeof subPrereq === "string") {
+                if (!completed.includes(subPrereq)) missing.push(subPrereq);
+              }
+            }
+          } else if (typeof prereq === "string") {
+            if (!completed.includes(prereq)) missing.push(prereq);
+          }
+          
+          console.log(`Prerequisites for ${courseCode}:`, prereqData);
+          console.log(`Missing prerequisites:`, missing);
+          setMissingPrereqs(missing);
+        } catch (error) {
+          console.error(`Error fetching prerequisites for ${courseCode}:`, error);
+          setError(error.message);
+          setMissingPrereqs([]);
+        } finally {
+          setLoading(false);
+        }
+      }
+      
+      fetchPrerequisites();
+    }, [courseCode, form.completedCourses]);
+    
+    if (loading) {
+      return (
+        <div className="text-sm text-green-200 mt-2">
+          <div className="text-green-300">Loading prerequisites...</div>
+        </div>
+      );
+    }
+    
+    if (error) {
+      return (
+        <div className="text-sm text-green-200 mt-2">
+          <div className="text-green-300">Error loading prerequisites</div>
+        </div>
+      );
+    }
+    
+    if (missingPrereqs.length === 0) {
+      return (
+        <div className="text-sm text-green-200 mt-2">
+          <div className="flex items-center justify-between">
+            <span className="text-green-300">✓ All prerequisites met</span>
+            <span className="text-green-400 text-lg">✓</span>
+          </div>
+        </div>
+      );
+    }
+    
+    try {
+      const groupedPrereqs = groupPrerequisites(missingPrereqs, "string", null);
+      console.log(`Grouped prerequisites for ${courseCode}:`, groupedPrereqs);
+      
+      // Check if all groups are invalid
+      const validGroups = groupedPrereqs.filter(group => group && group.courses && Array.isArray(group.courses));
+      
+      if (validGroups.length === 0 && missingPrereqs.length > 0) {
+        // Fallback: show raw prerequisites if grouping failed
+        return (
+          <div className="text-sm text-green-200 mt-2">
+            <strong>Missing prerequisites:</strong>
+            <div className="ml-4 mt-1 space-y-1">
+              {missingPrereqs.map((prereq, i) => (
+                <div key={i} className="text-green-200">
+                  • {prereq}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+      
+      return (
+        <div className="text-sm text-green-200 mt-2">
+          <strong>Missing prerequisites:</strong>
+          <div className="ml-4 mt-1 space-y-1">
+            {groupedPrereqs.map((group, i) => {
+              // Add safety checks for group structure
+              if (!group || !group.courses || !Array.isArray(group.courses)) {
+                console.log(`Invalid group at index ${i}:`, group);
+                return null; // Skip invalid groups instead of showing "Unknown prerequisites"
+              }
+              
+              return (
+                <div key={i}>
+                  {group.type === "choose_one" ? (
+                    <div>
+                      <span className="text-green-300 font-medium">Choose one:</span>
+                      <div className="ml-2 mt-1">
+                        {group.courses.map((course, j) => (
+                          <div key={j} className="text-green-200">
+                            • {course}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : group.type === "at_least" ? (
+                    <div>
+                      <span className="text-green-300 font-medium">Choose {group.count || group.courses.length}:</span>
+                      <div className="ml-2 mt-1">
+                        {group.courses.map((course, j) => (
+                          <div key={j} className="text-green-200">
+                            • {course}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-green-200">
+                      • {group.courses.join(", ")}
+                    </div>
+                  )}
+                </div>
+              );
+            }).filter(Boolean)} {/* Remove null entries from invalid groups */}
+          </div>
+        </div>
+      );
+    } catch (error) {
+      console.error('Error rendering prerequisites:', error);
+      return (
+        <div className="text-sm text-green-200 mt-2">
+          <div className="text-green-300">Error displaying prerequisites</div>
+        </div>
+      );
+    }
+  };
+
+  // Component for displaying elective course with prerequisites status
+  const ElectiveCourseDisplay = ({ courseCode }) => {
+    const [missingPrereqs, setMissingPrereqs] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    
+    useEffect(() => {
+      async function fetchPrerequisites() {
+        try {
+          setError(null);
+          const response = await fetch(`http://localhost:3001/api/prereqs/${courseCode.replace(' ', '_')}`);
+          if (!response.ok) {
+            setMissingPrereqs([]);
+            setLoading(false);
+            return;
+          }
+          
+          const prereqData = await response.json();
+          if (!prereqData.prereqs) {
+            setMissingPrereqs([]);
+            setLoading(false);
+            return;
+          }
+          
+          // Check which prerequisites are missing based on completed courses
+          const completed = form.completedCourses.split(',').map(c => c.trim()).filter(c => c);
+          const missingGroups = [];
+          
+          const prereq = prereqData.prereqs;
+          
+          if (prereq.type === "one") {
+            const anyCompleted = prereq.courses.some(c => completed.includes(c));
+            if (!anyCompleted) {
+              missingGroups.push({
+                type: "choose_one",
+                courses: prereq.courses.filter(c => !completed.includes(c))
+              });
+            }
+          } else if (prereq.type === "all") {
+            for (const subPrereq of prereq.courses) {
+              if (subPrereq.type === "one") {
+                const anyCompleted = subPrereq.courses.some(c => completed.includes(c));
+                if (!anyCompleted) {
+                  missingGroups.push({
+                    type: "choose_one",
+                    courses: subPrereq.courses.filter(c => !completed.includes(c))
+                  });
+                }
+              } else if (typeof subPrereq === "string") {
+                if (!completed.includes(subPrereq)) {
+                  missingGroups.push({
+                    type: "individual",
+                    course: subPrereq
+                  });
+                }
+              }
+            }
+          } else if (typeof prereq === "string") {
+            if (!completed.includes(prereq)) {
+              missingGroups.push({
+                type: "individual",
+                course: prereq
+              });
+            }
+          }
+          
+          setMissingPrereqs(missingGroups);
+        } catch (error) {
+          console.error(`Error fetching prerequisites for ${courseCode}:`, error);
+          setError(error.message);
+          setMissingPrereqs([]);
+        } finally {
+          setLoading(false);
+        }
+      }
+      
+      fetchPrerequisites();
+    }, [courseCode, form.completedCourses]);
+    
+    const hasAvailable = hasAvailableSections(courseCode);
+    const allPrereqsMet = !loading && !error && missingPrereqs.length === 0;
+    const isAIFilteredCourse = isAIFiltered(courseCode);
+    
+    return (
+      <div className={`p-2 border rounded ${
+        isAIFilteredCourse
+          ? "bg-green-800 border-purple-500 border-2" // AI filtered
+          : "bg-green-800 border-green-500" // Not AI filtered
+      }`}>
+        <div className="flex items-center justify-between">
+          <div className={`text-sm font-medium ${
+            !hasAvailable
+              ? "text-slate-500" // Grey out if no sections available
+              : "text-green-100"
+          }`}>
+            ✓ {courseCode}
+          </div>
+          {allPrereqsMet && (
+            <span className="text-green-400 text-lg" title="All prerequisites met - can take this course">
+              ✓
+            </span>
+          )}
+        </div>
+        
+        {/* Always show AI reasoning first if available */}
+        {isAIFilteredCourse && (
+          <div className="mt-2">
+            <InlineAIReasoning courseCode={courseCode} />
+          </div>
+        )}
+        
+        {/* Show prerequisites status or available sections */}
+        {loading && (
+          <div className="text-sm text-green-200 mt-2">
+            <div className="text-green-300">Loading prerequisites...</div>
+          </div>
+        )}
+        
+        {error && (
+          <div className="text-sm text-green-200 mt-2">
+            <div className="text-green-300">Error loading prerequisites</div>
+          </div>
+        )}
+        
+        {!loading && !error && missingPrereqs.length > 0 && (
+          <div className="text-sm text-green-200 mt-2">
+            <strong>Missing prerequisites:</strong>
+            <div className="ml-4 mt-1 space-y-1">
+              {missingPrereqs.map((group, i) => {
+                if (group.type === "choose_one") {
+                  return (
+                    <div key={i} className="text-green-200">
+                      <div className="font-medium">Choose one:</div>
+                      <div className="ml-4 space-y-1">
+                        {group.courses.map((course, courseIdx) => (
+                          <div key={courseIdx} className="text-green-200">
+                            • {course}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                } else if (group.type === "individual") {
+                  return (
+                    <div key={i} className="text-green-200">
+                      • {group.course}
+                    </div>
+                  );
+                }
+                return null;
+              })}
+            </div>
+          </div>
+        )}
+        
+        {allPrereqsMet && hasAvailable && (
+          <div className="text-sm text-green-200 mt-2">
+            <InlineCourseSections courseCode={courseCode} isFutureCourse={false} />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Component for displaying available elective course options with prerequisites status
+  const ElectiveCourseOption = ({ courseCode, isSelected, hasAvailable, onClick }) => {
+    const [missingPrereqs, setMissingPrereqs] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    
+    useEffect(() => {
+      async function fetchPrerequisites() {
+        try {
+          setError(null);
+          const response = await fetch(`http://localhost:3001/api/prereqs/${courseCode.replace(' ', '_')}`);
+          if (!response.ok) {
+            setMissingPrereqs([]);
+            setLoading(false);
+            return;
+          }
+          
+          const prereqData = await response.json();
+          if (!prereqData.prereqs) {
+            setMissingPrereqs([]);
+            setLoading(false);
+            return;
+          }
+          
+          // Check which prerequisites are missing based on completed courses
+          const completed = form.completedCourses.split(',').map(c => c.trim()).filter(c => c);
+          const missing = [];
+          
+          const prereq = prereqData.prereqs;
+          
+          if (prereq.type === "one") {
+            const anyCompleted = prereq.courses.some(c => completed.includes(c));
+            if (!anyCompleted) {
+              missing.push(...prereq.courses.filter(c => !completed.includes(c)));
+            }
+          } else if (prereq.type === "all") {
+            for (const subPrereq of prereq.courses) {
+              if (subPrereq.type === "one") {
+                const anyCompleted = subPrereq.courses.some(c => completed.includes(c));
+                if (!anyCompleted) {
+                  missing.push(...subPrereq.courses.filter(c => !completed.includes(c)));
+                }
+              } else if (typeof subPrereq === "string") {
+                if (!completed.includes(subPrereq)) missing.push(subPrereq);
+              }
+            }
+          } else if (typeof prereq === "string") {
+            if (!completed.includes(prereq)) missing.push(prereq);
+          }
+          
+          setMissingPrereqs(missing);
+        } catch (error) {
+          console.error(`Error fetching prerequisites for ${courseCode}:`, error);
+          setError(error.message);
+          setMissingPrereqs([]);
+        } finally {
+          setLoading(false);
+        }
+      }
+      
+      fetchPrerequisites();
+    }, [courseCode, form.completedCourses]);
+    
+    const allPrereqsMet = !loading && !error && missingPrereqs.length === 0;
+    const isAIFilteredCourse = isAIFiltered(courseCode);
+    
+    return (
+      <div 
+        className={`p-2 border rounded transition-all ${
+          !hasAvailable
+            ? isAIFilteredCourse
+              ? "bg-slate-700/50 border-purple-500 text-purple-400 cursor-not-allowed" // AI filtered but no sections
+              : "bg-slate-700/50 border-slate-500 text-slate-500 cursor-not-allowed" // Grey out if no sections available
+            : isSelected 
+              ? isAIFilteredCourse
+                ? "bg-slate-600/50 border-purple-500 text-purple-300 opacity-50 cursor-pointer" // AI filtered and selected
+                : "bg-slate-600/50 border-gray-500 text-slate-300 opacity-50 cursor-pointer" // Selected but not AI filtered
+              : isAIFilteredCourse
+                ? "bg-red-800 border-purple-500 border-2 text-purple-100 hover:bg-red-700 cursor-pointer" // AI filtered and available
+                : "bg-red-800 border-red-500 text-red-100 hover:bg-red-700 cursor-pointer" // Available but not AI filtered
+        }`}
+        onClick={hasAvailable ? onClick : undefined}
+      >
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-medium">
+            ○ {courseCode}
+          </div>
+          {allPrereqsMet && hasAvailable && (
+            <span className="text-green-400 text-lg" title="All prerequisites met - can take this course">
+              ✓
+            </span>
+          )}
+        </div>
+      </div>
     );
   };
 
@@ -934,10 +1482,38 @@ const Scheduler = ({ onBackToLanding }) => {
   };
 
   // Component for displaying course sections inline
-  const InlineCourseSections = ({ courseCode }) => {
+  const InlineCourseSections = ({ courseCode, isFutureCourse = false }) => {
     const secForCourse = results.sections ? results.sections.filter(s => 
       `${s.dept} ${s.code}` === courseCode
     ) : [];
+    const aiData = getAIData(courseCode);
+    
+    // For future courses, only show AI reasoning if available
+    if (isFutureCourse) {
+      if (!aiData) {
+        return null;
+      }
+      return (
+        <div className="mt-2 ml-4">
+          <div className="p-3 bg-purple-900/30 border border-purple-600/50 rounded">
+            <div className="flex justify-between items-start mb-2">
+              <div className="text-purple-200 text-sm font-medium">🤖 AI Recommendation</div>
+              <div className="text-purple-300 text-xs">
+                Relevance: {Math.round(aiData.relevance_score * 100)}%
+              </div>
+            </div>
+            <div className="text-purple-100 text-sm mb-2">{aiData.reason}</div>
+            {aiData.professor_rating && (
+              <div className="text-purple-200 text-xs">
+                Professor: {aiData.professor} | Rating: {aiData.professor_rating.rating}/5 | 
+                Difficulty: {aiData.professor_rating.difficulty}/5 | 
+                Would take again: {aiData.professor_rating.would_take_again}%
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
     
     if (secForCourse.length === 0) {
       return (
@@ -951,6 +1527,27 @@ const Scheduler = ({ onBackToLanding }) => {
 
   return (
       <div className="mt-2 ml-4">
+        {/* AI Reasoning Section */}
+        {aiData && (
+          <div className="mb-4 p-3 bg-purple-900/30 border border-purple-600/50 rounded">
+            <div className="flex justify-between items-start mb-2">
+              <div className="text-purple-200 text-sm font-medium">🤖 AI Recommendation</div>
+              <div className="text-purple-300 text-xs">
+                Relevance: {Math.round(aiData.relevance_score * 100)}%
+              </div>
+            </div>
+            <div className="text-purple-100 text-sm mb-2">{aiData.reason}</div>
+            {aiData.professor_rating && (
+              <div className="text-purple-200 text-xs">
+                Professor: {aiData.professor} | Rating: {aiData.professor_rating.rating}/5 | 
+                Difficulty: {aiData.professor_rating.difficulty}/5 | 
+                Would take again: {aiData.professor_rating.would_take_again}%
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Course Sections */}
         {groupSectionsByProfessor(secForCourse).map((group, gIdx) => {
           const lectureSectionId = group.lecture ? `${group.lecture.dept} ${group.lecture.code} ${group.lecture.sectionType} ${group.lecture.days.join('')} ${group.lecture.times.start}` : null;
           
@@ -1265,6 +1862,25 @@ const Scheduler = ({ onBackToLanding }) => {
                 {aiLoading ? "Thinking..." : "Filter with AI"}
               </button>
             </form>
+            
+            {/* AI Summary and Recommendations */}
+            {aiResults && (
+              <div className="mt-4 space-y-3">
+                {/* AI Summary */}
+                {aiResults.summary && (
+                  <div className="p-3 bg-purple-900/30 border border-purple-600 rounded text-purple-200 text-sm">
+                    {aiResults.summary}
+                  </div>
+                )}
+                
+                {/* AI Recommendations */}
+                {aiResults.recommendations && (
+                  <div className="p-3 bg-blue-900/30 border border-blue-600 rounded text-blue-200 text-sm">
+                    <strong>Recommendations:</strong> {aiResults.recommendations}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -1288,11 +1904,19 @@ const Scheduler = ({ onBackToLanding }) => {
                     <div key={idx} className={`p-3 border rounded ${
                       selectedCourse && isChooseOne 
                         ? hasSelectedSections(selectedCourse)
-                          ? "bg-green-900 border-orange-500 border-2"
-                          : "bg-red-900 border-orange-500 border-2"
+                          ? isAIFiltered(selectedCourse)
+                            ? "bg-green-900 border-purple-500 border-2" // AI filtered + selected
+                            : "bg-green-900 border-orange-500 border-2" // Selected but not AI filtered
+                          : isAIFiltered(selectedCourse)
+                            ? "bg-red-900 border-purple-500 border-2" // AI filtered but not selected
+                            : "bg-red-900 border-orange-500 border-2" // Not selected and not AI filtered
                         : courseGroup.type === "string" && hasSelectedSections(courseGroup.course)
-                        ? "bg-green-900 border-green-600" 
-                        : "bg-red-900 border-red-600"
+                        ? isAIFiltered(courseGroup.course)
+                          ? "bg-green-900 border-purple-500" // AI filtered + has sections
+                          : "bg-green-900 border-green-600" // Has sections but not AI filtered
+                        : courseGroup.type === "string" && isAIFiltered(courseGroup.course)
+                        ? "bg-red-900 border-purple-500" // AI filtered but no sections
+                        : "bg-red-900 border-red-600" // No sections and not AI filtered
                     }`}>
                       <div className="font-medium text-red-100">
                         {courseGroup.courses && courseGroup.courses.length > 0 ? (
@@ -1312,10 +1936,16 @@ const Scheduler = ({ onBackToLanding }) => {
                                 <div className="flex items-center justify-between">
                                   <div className={`font-medium ${
                                     !hasAvailableSections(selectedCourse)
-                                      ? "text-slate-500" // Grey out if no sections available
+                                      ? isAIFiltered(selectedCourse)
+                                        ? "text-purple-400" // AI filtered but no sections
+                                        : "text-slate-500" // Grey out if no sections available
                                       : hasSelectedSections(selectedCourse) 
-                                        ? "text-green-100" 
-                                        : "text-red-100"
+                                        ? isAIFiltered(selectedCourse)
+                                          ? "text-purple-200" // AI filtered and has sections
+                                          : "text-green-100" // Has sections but not AI filtered
+                                        : isAIFiltered(selectedCourse)
+                                          ? "text-purple-300" // AI filtered but no selected sections
+                                          : "text-red-100" // No selected sections and not AI filtered
                                   }`}>
                                   • {selectedCourse}
                                 </div>
@@ -1347,13 +1977,18 @@ const Scheduler = ({ onBackToLanding }) => {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                                   {courseGroup.courses.map((course, courseIdx) => {
                                     const hasAvailable = hasAvailableSections(course);
+                                    const isAIFilteredCourse = isAIFiltered(course);
                                     return (
                                       <div 
                                         key={courseIdx} 
                                         className={`text-sm p-1 rounded transition-colors ${
                                           !hasAvailable
-                                            ? "text-slate-500 cursor-not-allowed" // Grey out if no sections available
-                                            : `cursor-pointer hover:bg-red-800 ${isChooseOne ? "hover:text-red-100" : ""}`
+                                            ? isAIFilteredCourse
+                                              ? "text-purple-400 cursor-not-allowed border border-purple-500" // AI filtered but no sections
+                                              : "text-slate-500 cursor-not-allowed" // Grey out if no sections available
+                                            : isAIFilteredCourse
+                                              ? `cursor-pointer hover:bg-purple-800 text-purple-200 border border-purple-500 ${isChooseOne ? "hover:text-purple-100" : ""}` // AI filtered and available
+                                              : `cursor-pointer hover:bg-red-800 ${isChooseOne ? "hover:text-red-100" : ""}` // Available but not AI filtered
                                         }`}
                                         onClick={hasAvailable && isChooseOne ? () => selectUrgentCourse(idx, course, "one") : undefined}
                                       >
@@ -1395,11 +2030,19 @@ const Scheduler = ({ onBackToLanding }) => {
                     (selectedCourse && isChooseOne) || (selectedCoursesList.length > 0 && isAtLeast)
                       ? (selectedCourse && isChooseOne && hasSelectedSections(selectedCourse)) || 
                         (selectedCoursesList.length > 0 && isAtLeast && selectedCoursesList.some(course => hasSelectedSections(course)))
-                        ? "bg-green-900 border-orange-500 border-2"
-                        : "bg-yellow-900 border-orange-500 border-2"
+                        ? isAIFiltered(selectedCourse) || (selectedCoursesList.length > 0 && selectedCoursesList.some(c => isAIFiltered(c)))
+                          ? "bg-green-900 border-purple-500 border-2" // AI filtered + selected
+                          : "bg-green-900 border-orange-500 border-2" // Selected but not AI filtered
+                        : isAIFiltered(selectedCourse) || (selectedCoursesList.length > 0 && selectedCoursesList.some(c => isAIFiltered(c)))
+                          ? "bg-yellow-900 border-purple-500 border-2" // AI filtered but not selected
+                          : "bg-yellow-900 border-orange-500 border-2" // Not selected and not AI filtered
                       : course.type === "string" && hasSelectedSections(course.course)
-                        ? "bg-green-900 border-green-600"
-                        : "bg-yellow-900 border-yellow-600"
+                        ? isAIFiltered(course.course)
+                          ? "bg-green-900 border-purple-500" // AI filtered + has sections
+                          : "bg-green-900 border-green-600" // Has sections but not AI filtered
+                        : course.type === "string" && isAIFiltered(course.course)
+                        ? "bg-yellow-900 border-purple-500" // AI filtered but no sections
+                        : "bg-yellow-900 border-yellow-600" // No sections and not AI filtered
                   }`}>
                   <div className="font-medium text-yellow-100">
                     {course.courses && course.courses.length > 0 ? (
@@ -1416,7 +2059,11 @@ const Scheduler = ({ onBackToLanding }) => {
                                   Choose Again
                                 </button>
                               </div>
-                              <div className="text-yellow-100 font-medium">
+                              <div className={`font-medium ${
+                                isAIFiltered(selectedCourse)
+                                  ? "text-purple-200" // AI filtered
+                                  : "text-yellow-100" // Not AI filtered
+                              }`}>
                                 • {selectedCourse}
                               </div>
                             </div>
@@ -1437,7 +2084,11 @@ const Scheduler = ({ onBackToLanding }) => {
                               <div className="space-y-1">
                                 {selectedCoursesList.map((selectedCourseCode, selectedIdx) => (
                                   <div key={selectedIdx}>
-                                    <div className="text-yellow-100 font-medium">
+                                    <div className={`font-medium ${
+                                      isAIFiltered(selectedCourseCode)
+                                        ? "text-purple-200" // AI filtered
+                                        : "text-yellow-100" // Not AI filtered
+                                    }`}>
                                       • {selectedCourseCode}
                                     </div>
                                   </div>
@@ -1459,11 +2110,14 @@ const Scheduler = ({ onBackToLanding }) => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                                 {course.courses.map((courseCode, courseIdx) => {
                                   const isSelected = selectedCoursesList.includes(courseCode);
+                                  const isAIFilteredCourse = isAIFiltered(courseCode);
                                   return (
                                     <div 
                                       key={courseIdx} 
-                                      className={`text-sm cursor-pointer hover:bg-yellow-800 p-1 rounded transition-colors ${
-                                        (isChooseOne || isAtLeast) ? "hover:text-yellow-100" : ""
+                                      className={`text-sm cursor-pointer p-1 rounded transition-colors ${
+                                        isAIFilteredCourse
+                                          ? "hover:bg-purple-800 text-purple-200 hover:text-purple-100 border border-purple-500" // AI filtered
+                                          : "hover:bg-yellow-800 hover:text-yellow-100" // Not AI filtered
                                       }`}
                                       onClick={(isChooseOne || isAtLeast) ? () => selectFutureCourse(idx, courseCode, course.type) : undefined}
                                     >
@@ -1476,7 +2130,7 @@ const Scheduler = ({ onBackToLanding }) => {
                           )}
                       </div>
                     ) : (
-                        <SingularCourseItem item={course} showDropdown={false} />
+                        <SingularCourseItem item={course} showDropdown={isAIFiltered(course.course)} isFutureCourse={true} />
                     )}
                   </div>
                   {course.missingPrereqs && course.missingPrereqs.length > 0 && (
@@ -1524,59 +2178,6 @@ const Scheduler = ({ onBackToLanding }) => {
           </div>
         )}
 
-        {/* AI Results */}
-        {aiResults && (
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-3 text-white">🤖 AI Filtered Results</h2>
-            
-            {/* AI Summary */}
-            {aiResults.summary && (
-              <div className="mb-4 p-3 bg-purple-900/30 border border-purple-600 rounded text-purple-200 text-sm">
-                {aiResults.summary}
-              </div>
-            )}
-            
-            {/* AI Recommendations */}
-            {aiResults.recommendations && (
-              <div className="mb-4 p-3 bg-blue-900/30 border border-blue-600 rounded text-blue-200 text-sm">
-                <strong>Recommendations:</strong> {aiResults.recommendations}
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              {aiResults.filtered_courses && aiResults.filtered_courses.length > 0 ? (
-                aiResults.filtered_courses.map((course, idx) => {
-                  const secForCourse = results.sections.filter(s => 
-                    `${s.dept} ${s.code}` === course.course_code
-                  );
-                  return (
-                    <div key={course.course_code} className="p-3 bg-slate-700/50 border border-slate-600/50 rounded">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="font-medium text-white">{course.course_code}</div>
-                        <div className="text-sm text-slate-400">
-                          Relevance: {Math.round(course.relevance_score * 100)}%
-                        </div>
-                      </div>
-                      <div className="text-sm text-slate-300 mb-2">{course.reason}</div>
-                      {course.professor_rating && (
-                        <div className="text-xs text-slate-400 mb-2">
-                          Professor: {course.professor} | Rating: {course.professor_rating.rating}/5 | 
-                          Difficulty: {course.professor_rating.difficulty}/5 | 
-                          Would take again: {course.professor_rating.would_take_again}%
-                        </div>
-                      )}
-                      <CourseSection courseLabel={course.course_code} secForCourse={secForCourse} />
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="p-3 bg-slate-700/50 border border-slate-600/50 rounded text-slate-300">
-                  No courses match your AI query.
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
 
           </div>
@@ -1638,28 +2239,7 @@ const Scheduler = ({ onBackToLanding }) => {
                               <div className="text-xs text-green-200 mb-2">Selected:</div>
                               <div className="space-y-1">
                                 {selectedCoursesList.map((selectedCourse, selectedIdx) => (
-                                  <div key={selectedIdx} className="p-2 bg-green-800 border border-green-500 rounded">
-                                    <div className="flex items-center justify-between">
-                                      <div className={`text-sm font-medium ${
-                                        !hasAvailableSections(selectedCourse)
-                                          ? "text-slate-500" // Grey out if no sections available
-                                          : "text-green-100"
-                                      }`}>
-                                        ✓ {selectedCourse}
-                                      </div>
-                                      {hasAvailableSections(selectedCourse) && (
-                                        <button
-                                          onClick={() => toggleCourseExpansion(selectedCourse)}
-                                          className="text-slate-400 hover:text-slate-200 text-sm"
-                                        >
-                                          {expandedCourses.has(selectedCourse) ? "▲" : "▼"}
-                                        </button>
-                                      )}
-                                    </div>
-                                    {expandedCourses.has(selectedCourse) && hasAvailableSections(selectedCourse) && (
-                                      <InlineCourseSections courseCode={selectedCourse} />
-                                    )}
-                                  </div>
+                                  <ElectiveCourseDisplay key={selectedIdx} courseCode={selectedCourse} />
                                 ))}
                               </div>
                             </div>
@@ -1671,21 +2251,13 @@ const Scheduler = ({ onBackToLanding }) => {
                               const isSelected = selectedCoursesList.includes(course);
                               const hasAvailable = hasAvailableSections(course);
                               return (
-                                <div 
-                                  key={courseIdx} 
-                                  className={`p-2 border rounded transition-all ${
-                                    !hasAvailable
-                                      ? "bg-slate-700/50 border-slate-500 text-slate-500 cursor-not-allowed" // Grey out if no sections available
-                                      : isSelected 
-                                        ? "bg-slate-600/50 border-gray-500 text-slate-300 opacity-50 cursor-pointer" 
-                                        : "bg-red-800 border-red-500 text-red-100 hover:bg-red-700 cursor-pointer"
-                                  }`}
-                                  onClick={hasAvailable ? () => selectElectiveCourse(idx, course, "at_least") : undefined}
-                                >
-                                  <div className="text-sm font-medium">
-                                    ○ {course}
-                                  </div>
-                                </div>
+                                <ElectiveCourseOption
+                                  key={courseIdx}
+                                  courseCode={course}
+                                  isSelected={isSelected}
+                                  hasAvailable={hasAvailable}
+                                  onClick={() => selectElectiveCourse(idx, course, "at_least")}
+                                />
                               );
                             })}
                           </div>
