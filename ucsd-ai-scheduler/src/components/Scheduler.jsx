@@ -72,7 +72,8 @@ const groupPrerequisites = (prereqs, courseType = null, courseCount = null) => {
   return groups;
 };
 
-const Scheduler = ({ onBackToLanding }) => {
+const Scheduler = ({ onBackToLanding, onAbout }) => {
+  const [isVisible, setIsVisible] = useState(false);
   const [form, setForm] = useState({
     major: '',
     completedCourses: '',
@@ -206,6 +207,10 @@ const Scheduler = ({ onBackToLanding }) => {
 
     return conflicts;
   };
+  
+  useEffect(() => {
+    setIsVisible(true);
+  }, []);
   
   useEffect(() => {
     async function fetchMajors() {
@@ -1751,7 +1756,7 @@ const Scheduler = ({ onBackToLanding }) => {
             >
               Home
             </a>
-            <a href="#about" className="text-sm sm:text-base hover:text-slate-300 transition-colors no-underline" style={{ color: 'white', textDecoration: 'none' }}>About</a>
+            <a onClick={onAbout} className="text-sm sm:text-base hover:text-slate-300 transition-colors cursor-pointer" style={{ color: 'white', textDecoration: 'none' }}>About</a>
           </div>
         </div>
       </nav>
@@ -1761,7 +1766,7 @@ const Scheduler = ({ onBackToLanding }) => {
         {/* Responsive layout with three columns */}
         <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)] lg:h-[calc(100vh-220px)] px-2 sm:px-3 lg:px-4">
           {/* Left column - Form and Course Suggestions */}
-          <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 2xl:col-span-1 bg-slate-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-700/50 h-full overflow-y-auto">
+          <div className={`md:col-span-1 lg:col-span-1 xl:col-span-1 2xl:col-span-1 bg-slate-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-700/50 h-full overflow-y-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
         
         <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -2183,7 +2188,7 @@ const Scheduler = ({ onBackToLanding }) => {
           </div>
           
           {/* Middle column - Calendar */}
-          <div className="md:col-span-1 lg:col-span-1 xl:col-span-2 2xl:col-span-3 bg-slate-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-700/50 h-full overflow-y-auto">
+          <div className={`md:col-span-1 lg:col-span-1 xl:col-span-2 2xl:col-span-3 bg-slate-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-700/50 h-full overflow-y-auto transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             {results.sections && results.sections.length > 0 ? (
               <Calendar 
                 sections={results.sections} 
@@ -2201,7 +2206,7 @@ const Scheduler = ({ onBackToLanding }) => {
           </div>
           
           {/* Right column - Electives */}
-          <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 2xl:col-span-1 bg-slate-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-700/50 h-full overflow-y-auto">
+          <div className={`md:col-span-1 lg:col-span-1 xl:col-span-1 2xl:col-span-1 bg-slate-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-700/50 h-full overflow-y-auto transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <h2 className="text-xl font-semibold mb-3 text-white">Electives</h2>
             {(() => {
               // Get elective items from the processed urgent items
