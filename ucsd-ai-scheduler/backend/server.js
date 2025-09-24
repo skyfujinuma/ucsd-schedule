@@ -98,9 +98,27 @@ function loadCourses() {
 }
 const allCourses = loadCourses(); 
 
+// Root endpoint
+app.get("/", (req, res) => {
+  res.json({ 
+    message: "UCSD AI Scheduler Backend API",
+    endpoints: [
+      "/api/courses",
+      "/api/majors", 
+      "/api/prereqs/:course",
+      "/api/colleges"
+    ]
+  });
+});
+
 // Endpoint for all on-demand course data
 app.get("/api/courses", (req, res) => {
   res.json(allCourses);
+});
+
+// Alias for major-reqs endpoint
+app.get("/api/majors", (req, res) => {
+  res.json(allMajorReqs);
 });
 
 // Utility to load all majors at startup into memory

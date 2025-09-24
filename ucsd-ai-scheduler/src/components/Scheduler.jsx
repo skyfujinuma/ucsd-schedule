@@ -215,7 +215,7 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
   useEffect(() => {
     async function fetchMajors() {
       try {
-        const response = await fetch("http://localhost:3001/api/major-reqs");
+        const response = await fetch("https://ucsd-back-production.up.railway.app/api/major-reqs");
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -257,7 +257,7 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
 
       for (const prereq of missingPrereqs) {
         try {
-          const response = await fetch(`http://localhost:3001/api/prereqs/${prereq.replace(' ', '_')}`);
+          const response = await fetch(`https://ucsd-back-production.up.railway.app/api/prereqs/${prereq.replace(' ', '_')}`);
           if (!response.ok) {
             prereqStatusMap[prereq] = true; // Assume no prereqs if no data
             continue;
@@ -308,7 +308,7 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
     setError(null);
     
     try {
-      const response = await fetch("http://localhost:3001/api/suggest", {
+      const response = await fetch("https://ucsd-back-production.up.railway.app/api/suggest", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -401,7 +401,7 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
       
       const courseData = Object.values(groupedCourses);
       
-      const response = await fetch("http://localhost:3001/api/ai-filter-courses", {
+      const response = await fetch("https://ucsd-back-production.up.railway.app/api/ai-filter-courses", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -880,7 +880,7 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
       async function fetchPrerequisites() {
         try {
           setError(null);
-          const response = await fetch(`http://localhost:3001/api/prereqs/${courseCode.replace(' ', '_')}`);
+          const response = await fetch(`https://ucsd-back-production.up.railway.app/api/prereqs/${courseCode.replace(' ', '_')}`);
           if (!response.ok) {
             setMissingPrereqs([]);
             setLoading(false);
@@ -1045,7 +1045,7 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
       async function fetchPrerequisites() {
         try {
           setError(null);
-          const response = await fetch(`http://localhost:3001/api/prereqs/${courseCode.replace(' ', '_')}`);
+          const response = await fetch(`https://ucsd-back-production.up.railway.app/api/prereqs/${courseCode.replace(' ', '_')}`);
           if (!response.ok) {
             setMissingPrereqs([]);
             setLoading(false);
@@ -1208,7 +1208,7 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
       async function fetchPrerequisites() {
         try {
           setError(null);
-          const response = await fetch(`http://localhost:3001/api/prereqs/${courseCode.replace(' ', '_')}`);
+          const response = await fetch(`https://ucsd-back-production.up.railway.app/api/prereqs/${courseCode.replace(' ', '_')}`);
           if (!response.ok) {
             setMissingPrereqs([]);
             setLoading(false);
