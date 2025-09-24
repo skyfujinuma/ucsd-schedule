@@ -1,0 +1,5 @@
+node_modules/
+Classes_Scraper/
+*.log
+*.py
+chromedriver.exe

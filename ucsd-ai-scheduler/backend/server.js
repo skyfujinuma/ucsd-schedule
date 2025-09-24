@@ -54,10 +54,10 @@ function parseTimes(timesStr) {
 
 
 // Utility to load all on-demand course data at startup
-const COURSE_FILE = "Classes_Scraper/data/fa25.json";
-const COURSE_FILE_WITH_RATINGS = "Classes_Scraper/data/fa25_with_ratings.json";
-const COURSE_FILE_WITH_CSE_MATH_RATINGS = "Classes_Scraper/data/fa25_with_cse_math_ratings.json";
-const COURSE_FILE_WITH_INDIVIDUAL_RATINGS = "Classes_Scraper/data/fa25_with_individual_professor_ratings.json";
+const COURSE_FILE = "public/course_data/fa25.json";
+const COURSE_FILE_WITH_RATINGS = "public/course_data/fa25_with_ratings.json";
+const COURSE_FILE_WITH_CSE_MATH_RATINGS = "public/course_data/fa25_with_cse_math_ratings.json";
+const COURSE_FILE_WITH_INDIVIDUAL_RATINGS = "public/course_data/fa25_with_individual_professor_ratings.json";
 function loadCourses() {
   // Try to load enhanced data with ratings first, fallback to original data
   let courseFile = COURSE_FILE;
@@ -104,7 +104,7 @@ app.get("/api/courses", (req, res) => {
 });
 
 // Utility to load all majors at startup into memory
-const majorReqsDir = path.join(process.cwd(), "requirementdata/majorreq");
+const majorReqsDir = path.join(process.cwd(), "public/majorreq");
 function loadAllMajorReqs() {
   const majors = {};
   const files = fs.readdirSync(majorReqsDir);
@@ -145,7 +145,7 @@ app.get("/api/major-reqs/:major", (req, res) => {
 
 
 // Utility to load all prereqs at startup into memory
-const PREQ_DIR = path.join(process.cwd(), "requirementdata/prereqdata/data");
+const PREQ_DIR = path.join(process.cwd(), "public/prereqdata");
 function loadAllPrereqsSync() {
   const files = fs.readdirSync(PREQ_DIR);
   const allPrereqs = {};
@@ -181,7 +181,7 @@ app.get("/api/prereqs/:course", (req, res) => {
 });
 
 // Load all college requirements at startup
-const collegesDir = path.join(process.cwd(), "requirementdata", "collegedata");
+const collegesDir = path.join(process.cwd(), "public", "collegedata");
 function loadColleges() {
   const colleges = {};
   const files = fs.readdirSync(collegesDir);
