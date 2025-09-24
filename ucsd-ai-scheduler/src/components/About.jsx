@@ -14,7 +14,7 @@ const About = ({ onBackToLanding }) => {
     
     // Animate stats on load
     const animateStats = () => {
-      const targetStats = { lines: 44000, version: 0, commits: 30, issues: 12 };
+      const targetStats = { lines: 44000, version: 0, commits: 37, issues: 12 };
       const duration = 2000;
       const steps = 60;
       const stepDuration = duration / steps;

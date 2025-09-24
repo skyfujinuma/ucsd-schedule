@@ -63,15 +63,11 @@ function loadCourses() {
   let courseFile = COURSE_FILE;
   if (fs.existsSync(COURSE_FILE_WITH_INDIVIDUAL_RATINGS)) {
     courseFile = COURSE_FILE_WITH_INDIVIDUAL_RATINGS;
-    console.log("Loading course data with individual professor ratings...");
   } else if (fs.existsSync(COURSE_FILE_WITH_CSE_MATH_RATINGS)) {
     courseFile = COURSE_FILE_WITH_CSE_MATH_RATINGS;
-    console.log("Loading course data with CSE/MATH professor ratings...");
   } else if (fs.existsSync(COURSE_FILE_WITH_RATINGS)) {
     courseFile = COURSE_FILE_WITH_RATINGS;
-    console.log("Loading course data with professor ratings...");
   } else {
-    console.log("Loading original course data (no ratings available)...");
   }
   
   const rawData = fs.readFileSync(courseFile, "utf-8");
@@ -98,7 +94,6 @@ function loadCourses() {
       }
     }
   }
-  console.log("Loaded Courses:", Object.keys(transformed).length);
   return transformed;
 }
 const allCourses = loadCourses(); 
@@ -131,7 +126,6 @@ Object.keys(allMajorReqs).forEach(code => {
     majorReqs[code] = allMajorReqs[code];
   }
 });
-console.log("Loaded Major Reqs:", Object.keys(majorReqs).length);
 
 
 // Endpoint for all major requirements
@@ -167,7 +161,6 @@ function loadAllPrereqsSync() {
   return allPrereqs;
 }
 const allPrereqs = loadAllPrereqsSync();
-console.log("Loaded Prereqs:", Object.keys(allPrereqs).length);
 
 // Endpoint for all course prereqs
 app.get("/api/prereqs", (req, res) => {
@@ -491,9 +484,6 @@ app.post("/api/suggest", (req, res) => {
   const processedFuture = [...future];
   const urgentCourses = new Set();
   
-  console.log('=== MISSING PREREQS DEBUG ===');
-  console.log('Original future courses:', future);
-  console.log('Filtered urgent courses:', filteredUrgent);
   
   // Collect all courses that are in urgent (for deduplication)
   filteredUrgent.forEach(item => {
@@ -506,20 +496,14 @@ app.post("/api/suggest", (req, res) => {
     }
   });
 
-  console.log('Urgent courses set:', Array.from(urgentCourses));
-  console.log('All processed courses:', Array.from(allProcessedCourses));
 
   // Process each future course to add its missing prerequisites
   future.forEach((futureCourse, idx) => {
-    console.log(`Processing future course ${idx}:`, futureCourse);
     if (futureCourse.missingPrereqs && futureCourse.missingPrereqs.length > 0) {
-      console.log(`  Missing prereqs: ${futureCourse.missingPrereqs.join(', ')}`);
       futureCourse.missingPrereqs.forEach(prereq => {
-        console.log(`    Checking prerequisite: ${prereq}`);
         
         // Skip if this prerequisite is already in urgent courses
         if (urgentCourses.has(prereq) || allProcessedCourses.has(prereq)) {
-          console.log(`      Skipping ${prereq} - already in urgent or processed`);
           return;
         }
 
@@ -529,11 +513,9 @@ app.post("/api/suggest", (req, res) => {
         
         if (prereqData && prereqData.prereqs) {
           const prereqReqs = prereqData.prereqs;
-          console.log(`      Prereq data for ${prereq}:`, prereqReqs);
           
           if (prereqReqs.type === "one") {
             prereqReady = prereqReqs.courses.some(c => completed.includes(c));
-            console.log(`      ${prereq} prereq type "one" - ready: ${prereqReady}`);
           } else if (prereqReqs.type === "all") {
             prereqReady = prereqReqs.courses.every(subPrereq => {
               if (subPrereq.type === "one") {
@@ -543,18 +525,14 @@ app.post("/api/suggest", (req, res) => {
               }
               return true;
             });
-            console.log(`      ${prereq} prereq type "all" - ready: ${prereqReady}`);
           } else if (typeof prereqReqs === "string") {
             prereqReady = completed.includes(prereqReqs);
-            console.log(`      ${prereq} prereq type "string" - ready: ${prereqReady}`);
           }
         } else {
-          console.log(`      ${prereq} has no prereqs - ready: true`);
         }
 
         // If the prerequisite is ready and not already processed, add it to urgent (not future!)
         if (prereqReady && !allProcessedCourses.has(prereq)) {
-          console.log(`      Adding ${prereq} to urgent courses`);
           filteredUrgent.push({
             type: "string",
             course: prereq
@@ -562,14 +540,11 @@ app.post("/api/suggest", (req, res) => {
           urgentCourses.add(prereq);
           allProcessedCourses.add(prereq);
         } else {
-          console.log(`      Not adding ${prereq} - ready: ${prereqReady}, processed: ${allProcessedCourses.has(prereq)}`);
         }
       });
     }
   });
 
-  console.log('Final processed future courses:', processedFuture);
-  console.log('=== END MISSING PREREQS DEBUG ===');
 
   res.json({ urgent: filteredUrgent, future: processedFuture, sections });
 });
@@ -605,7 +580,6 @@ Respond ONLY with the JSON.
     const parsed = JSON.parse(jsonText);
     res.json(parsed);
   } catch (error) {
-    console.error('Gemini API error:', error);
     res.status(500).json({ error: 'Failed to parse preferences with Gemini.' });
   }
 });
@@ -708,11 +682,9 @@ Respond ONLY with valid JSON.`;
     const parsed = JSON.parse(jsonText);
     res.json(parsed);
   } catch (error) {
-    console.error('Gemini API error:', error);
     res.status(500).json({ error: 'Failed to filter courses with AI.' });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
 });

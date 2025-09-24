@@ -2,6 +2,8 @@ import { useState } from 'react';
 import LandingPage from './components/LandingPage';
 import About from './components/About';
 import Scheduler from './components/Scheduler';
+import { Analytics } from '@vercel/analytics/react';
+
 
 function App() {
   const [currentPage, setCurrentPage] = useState('landing');
@@ -9,8 +11,10 @@ function App() {
   // Show landing page first
   if (currentPage === 'landing') {
     return <LandingPage 
+      Analytics
       onGetStarted={() => setCurrentPage('scheduler')} 
       onAbout={() => setCurrentPage('about')}
+      
     />;
   }
 

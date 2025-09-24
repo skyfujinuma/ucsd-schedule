@@ -224,7 +224,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
         const majorList = Object.values(data).map(major => major.major || major);
         setMajors(majorList);
       } catch (error) {
-        console.error("Error fetching majors:", error);
         setError("Failed to load majors. Please try again.");
         setMajors([]); // Set empty array as fallback
       }
@@ -293,7 +292,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
           
           prereqStatusMap[prereq] = prereqsMet;
         } catch (error) {
-          console.error(`Error checking prerequisites for ${prereq}:`, error);
           prereqStatusMap[prereq] = true; // Assume no prereqs if error
         }
       }
@@ -330,7 +328,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
       const data = await response.json();
       setResults(data);
     } catch (error) {
-      console.error("Error:", error);
       setError("Failed to fetch courses. Please try again.");
     } finally {
       setLoading(false);
@@ -424,7 +421,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
       const data = await response.json();
       setAiResults(data);
     } catch (error) {
-      console.error("Error:", error);
       setError("Failed to process AI query. Please try again.");
     } finally {
       setAiLoading(false);
@@ -560,15 +556,12 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
       setSelectedSections(newSelected);
     } else {
       // Check for conflicts before adding
-      console.log('Looking for section with ID:', sectionId);
       const sectionToAdd = results.sections.find(section => {
         const id = `${section.dept} ${section.code} ${section.sectionType} ${section.days.join('')} ${section.times.start}`;
         return id === sectionId;
       });
 
       if (sectionToAdd) {
-        console.log('Found section to add:', sectionToAdd);
-        console.log('Currently selected sections:', Array.from(selectedSections));
         
         // Find all sections that will be added (main section + associated sections)
         const sectionsToAdd = [sectionToAdd];
@@ -581,7 +574,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
           });
           if (associatedLecture) {
             sectionsToAdd.push(associatedLecture);
-            console.log('Associated lecture to add:', associatedLecture);
           }
         }
         
@@ -593,11 +585,9 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
           });
           if (associatedDiscussion) {
             sectionsToAdd.push(associatedDiscussion);
-            console.log('Associated discussion to add:', associatedDiscussion);
           }
         }
         
-        console.log('All sections to add:', sectionsToAdd);
         
         // Check for conflicts with all sections that will be added
         let allConflicts = [];
@@ -611,10 +601,8 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
           index === self.findIndex(c => c.sectionId === conflict.sectionId)
         );
         
-        console.log('Found conflicts:', uniqueConflicts);
         
         if (uniqueConflicts.length > 0) {
-          console.log('Showing conflict popup');
           // Show conflict popup with all sections that will be added
           setConflictPopup({
             sectionsToAdd: sectionsToAdd,
@@ -626,8 +614,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
           return;
         }
       } else {
-        console.log('Section not found for ID:', sectionId);
-        console.log('Available sections:', results.sections.map(s => `${s.dept} ${s.code} ${s.sectionType} ${s.days.join('')} ${s.times.start}`));
       }
 
       // No conflicts, add the section and its associated sections
@@ -789,9 +775,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
   // Use results directly since deduplication is now handled in the backend
   const processedResults = { urgent: results.urgent || [], future: results.future || [] };
   
-  // Debug logging
-  console.log('Frontend received results:', results);
-  console.log('Frontend processedResults:', processedResults);
 
   function renderCourseItem(item) {
     if (!item) return "Unknown";
@@ -937,11 +920,8 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
             if (!completed.includes(prereq)) missing.push(prereq);
           }
           
-          console.log(`Prerequisites for ${courseCode}:`, prereqData);
-          console.log(`Missing prerequisites:`, missing);
           setMissingPrereqs(missing);
         } catch (error) {
-          console.error(`Error fetching prerequisites for ${courseCode}:`, error);
           setError(error.message);
           setMissingPrereqs([]);
         } finally {
@@ -981,7 +961,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
     
     try {
       const groupedPrereqs = groupPrerequisites(missingPrereqs, "string", null);
-      console.log(`Grouped prerequisites for ${courseCode}:`, groupedPrereqs);
       
       // Check if all groups are invalid
       const validGroups = groupedPrereqs.filter(group => group && group.courses && Array.isArray(group.courses));
@@ -1009,7 +988,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
             {groupedPrereqs.map((group, i) => {
               // Add safety checks for group structure
               if (!group || !group.courses || !Array.isArray(group.courses)) {
-                console.log(`Invalid group at index ${i}:`, group);
                 return null; // Skip invalid groups instead of showing "Unknown prerequisites"
               }
               
@@ -1049,7 +1027,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
         </div>
       );
     } catch (error) {
-      console.error('Error rendering prerequisites:', error);
       return (
         <div className="text-sm text-green-200 mt-2">
           <div className="text-green-300">Error displaying prerequisites</div>
@@ -1126,7 +1103,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
           
           setMissingPrereqs(missingGroups);
         } catch (error) {
-          console.error(`Error fetching prerequisites for ${courseCode}:`, error);
           setError(error.message);
           setMissingPrereqs([]);
         } finally {
@@ -1274,7 +1250,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
           
           setMissingPrereqs(missing);
         } catch (error) {
-          console.error(`Error fetching prerequisites for ${courseCode}:`, error);
           setError(error.message);
           setMissingPrereqs([]);
         } finally {
@@ -1321,7 +1296,6 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
 
   const CourseSection = ({ courseLabel, secForCourse }) => {
     const [open, setOpen] = useState(false);
-    console.log(`Course ${courseLabel}: found ${secForCourse.length} sections`);
   
     return (
       <div className="mb-2">
