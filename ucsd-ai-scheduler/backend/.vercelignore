@@ -3,3 +3,4 @@ Classes_Scraper/
 *.log
 *.py
 chromedriver.exe
+node_modules
