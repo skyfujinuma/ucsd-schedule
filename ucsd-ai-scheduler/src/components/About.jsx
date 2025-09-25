@@ -14,7 +14,7 @@ const About = ({ onBackToLanding }) => {
     
     // Animate stats on load
     const animateStats = () => {
-      const targetStats = { lines: 44000, version: 0, commits: 37, issues: 12 };
+      const targetStats = { lines: 44000, version: 0, commits: 42, issues: 14 };
       const duration = 2000;
       const steps = 60;
       const stepDuration = duration / steps;
@@ -147,6 +147,7 @@ const About = ({ onBackToLanding }) => {
                   <li>• React 18</li>
                   <li>• Tailwind CSS</li>
                   <li>• Vite</li>
+                  <li>• Vercel</li>
                 </ul>
               </div>
               <div className="bg-slate-800/50 p-6 sm:p-8 lg:p-10 rounded-lg border border-green-500/50 shadow-lg shadow-green-500/20">
@@ -158,7 +159,7 @@ const About = ({ onBackToLanding }) => {
                   <li>• Node.js with Express</li>
                   <li>• Python Web Scraping</li>
                   <li>• Google Gemini API</li>
-                  <li>• RESTful API design</li>
+                  <li>• Railway</li>
                 </ul>
               </div>
               <div className="bg-slate-800/50 p-6 sm:p-8 lg:p-10 rounded-lg border border-purple-500/50 shadow-lg shadow-purple-500/20 md:col-span-2 xl:col-span-1">
@@ -206,19 +207,20 @@ const About = ({ onBackToLanding }) => {
               <div className="flex flex-col sm:flex-row gap-4 sm:gap-6">
                 <a
                   href="https://github.com/skyfujinuma"
-                  className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 lg:px-8 lg:py-4 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base lg:text-lg text-center hover:scale-105 hover:shadow-lg"
+                  className="bg-slate-700 !text-slate-300 px-6 py-3 lg:px-8 lg:py-4 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base lg:text-lg text-center hover:scale-105 hover:shadow-lg"
                 >
                   GitHub Profile
                 </a>
                 <a
                   href="https://www.linkedin.com/in/sky-fujinuma-b55704263/"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 lg:px-8 lg:py-4 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base lg:text-lg text-center hover:scale-105 hover:shadow-lg"
+                  className="!text-slate-300 px-6 py-3 lg:px-8 lg:py-4 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base lg:text-lg text-center hover:scale-105 hover:shadow-lg"
+                  style={{ backgroundColor: '#0077B5' }}
                 >
                   LinkedIn
                 </a>
                 <a
                   href="mailto:sfujinuma@ucsd.edu"
-                  className="border border-slate-600 hover:border-slate-500 text-slate-300 hover:text-white px-6 py-3 lg:px-8 lg:py-4 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base lg:text-lg text-center hover:scale-105 hover:shadow-lg"
+                  className="border border-slate-600 hover:border-slate-500 !text-slate-300 hover:text-white px-6 py-3 lg:px-8 lg:py-4 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base lg:text-lg text-center hover:scale-105 hover:shadow-lg"
                 >
                   Contact
                 </a>
@@ -254,7 +256,7 @@ const About = ({ onBackToLanding }) => {
                   <ul className="text-yellow-200 text-sm sm:text-base lg:text-lg space-y-2">
                     <li className="hover:text-yellow-100 transition-colors">• More major and college support</li>
                     <li className="hover:text-yellow-100 transition-colors">• Full professor rating integration</li>
-                    <li className="hover:text-yellow-100 transition-colors">• Mobile version</li>
+                    <li className="hover:text-yellow-100 transition-colors">• Mobile Friendly UI</li>
                     <li className="hover:text-yellow-100 transition-colors">• Advanced scheduling algorithms</li>
                   </ul>
                 </div>
