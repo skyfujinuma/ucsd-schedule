@@ -43,7 +43,7 @@ const LandingPage = ({ onGetStarted, onAbout }) => {
   }, []);
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-y-auto">
+    <div className="min-h-screen w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-y-auto">
       {/* Navigation */}
       <nav className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700/50">
         <div className="flex justify-between items-center px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
@@ -65,7 +65,7 @@ const LandingPage = ({ onGetStarted, onAbout }) => {
 
       {/* Hero Section */}
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
-        <div className="w-full mx-auto">
+        <div className="w-full max-w-7xl mx-auto">
           {/* Main Title */}
           <div className={`flex flex-col items-center mb-1 sm:mb-2 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <h1 
@@ -107,15 +107,15 @@ const LandingPage = ({ onGetStarted, onAbout }) => {
               <div className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-400">{animatedStats.majors}</div>
               <div className="text-xs sm:text-sm text-slate-400">Loaded Majors</div>
             </div>
-            <div className="text-center bg-slate-800/30 p-4 sm:p-6 rounded-lg border border-green-500/50">
+            <div className="text-center bg-slate-800/30 p-4 sm:p-6 lg:p-8 rounded-lg border border-green-500/50">
               <div className="text-lg sm:text-xl lg:text-2xl font-bold text-green-400">{animatedStats.colleges}</div>
               <div className="text-xs sm:text-sm text-slate-400">Loaded Colleges</div>
             </div>
-            <div className="text-center bg-slate-800/30 p-4 sm:p-6 rounded-lg border border-purple-500/50">
+            <div className="text-center bg-slate-800/30 p-4 sm:p-6 lg:p-8 rounded-lg border border-purple-500/50">
               <div className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-400">v{animatedStats.version}.0.0-alpha</div>
               <div className="text-xs sm:text-sm text-slate-400">Latest Release</div>
             </div>
-            <div className="text-center bg-slate-800/30 p-4 sm:p-6 rounded-lg border border-orange-500/50">
+            <div className="text-center bg-slate-800/30 p-4 sm:p-6 lg:p-8 rounded-lg border border-orange-500/50">
               <div className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-400">MIT</div>
               <div className="text-xs sm:text-sm text-slate-400">License</div>
             </div>
@@ -123,7 +123,7 @@ const LandingPage = ({ onGetStarted, onAbout }) => {
         </div>
 
         {/* What is TACO Section */}
-        <div className={`w-full mx-auto mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-900 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+        <div className={`w-full max-w-7xl mx-auto mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-900 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-4 sm:mb-6">What is taco?</h2>
           <p className="text-base sm:text-lg lg:text-xl text-slate-300 leading-relaxed mb-6 sm:mb-8">
             taco is an intelligent, AI-powered course planning assistant for UCSD students, 
@@ -156,7 +156,7 @@ const LandingPage = ({ onGetStarted, onAbout }) => {
         </div>
 
         {/* Key Features */}
-        <div className={`w-full mx-auto mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-1100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+        <div className={`w-full max-w-7xl mx-auto mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-1100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-6 sm:mb-8">Key Features</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-10">
             <div className="bg-slate-800/50 p-6 sm:p-8 lg:p-10 rounded-lg border border-blue-500/50">
@@ -199,7 +199,7 @@ const LandingPage = ({ onGetStarted, onAbout }) => {
         </div>
 
         {/* Development Notice */}
-        <div className={`w-full mx-auto transition-all duration-1000 delay-1300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+        <div className={`w-full max-w-7xl mx-auto transition-all duration-1000 delay-1300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
           <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-4 sm:p-6 hover:border-yellow-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-yellow-500/20">
             <div className="flex items-center mb-2 sm:mb-3">
               <span className="text-yellow-400 text-lg sm:text-xl mr-2 sm:mr-3 animate-pulse">🚧</span>

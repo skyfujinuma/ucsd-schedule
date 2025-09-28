@@ -43,7 +43,7 @@ const About = ({ onBackToLanding }) => {
   }, []);
 
   return (
-    <div className="h-screen w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-y-auto">
+    <div className="min-h-screen w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 overflow-y-auto">
       {/* Navigation */}
       <nav className="bg-slate-800/80 backdrop-blur-sm border-b border-slate-700/50">
         <div className="flex justify-between items-center px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
@@ -71,7 +71,7 @@ const About = ({ onBackToLanding }) => {
 
       {/* Main Content */}
       <main className="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
-        <div className="w-full mx-auto">
+        <div className="w-full max-w-7xl mx-auto">
           {/* Page Title */}
           <div className={`text-center mb-8 sm:mb-12 lg:mb-16 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <h1 
@@ -109,7 +109,7 @@ const About = ({ onBackToLanding }) => {
           </div>
 
           {/* Project Overview */}
-          <div className={`mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <div className={`w-full max-w-7xl mx-auto mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-6 sm:mb-8">Overview</h2>
             <div className="bg-slate-800/50 p-6 sm:p-8 lg:p-12 rounded-lg border border-slate-700">
               <p className="text-base sm:text-lg lg:text-xl xl:text-2xl text-slate-300 leading-relaxed mb-6 lg:mb-8">
@@ -135,7 +135,7 @@ const About = ({ onBackToLanding }) => {
           </div>
 
           {/* Technology Stack */}
-          <div className={`mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <div className={`w-full max-w-7xl mx-auto mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-6 sm:mb-8">The Stack</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
               <div className="bg-slate-800/50 p-6 sm:p-8 lg:p-10 rounded-lg border border-blue-500/50 shadow-lg shadow-blue-500/20">
@@ -179,7 +179,7 @@ const About = ({ onBackToLanding }) => {
 
 
           {/* Developer Section */}
-          <div className={`mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-1100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <div className={`w-full max-w-7xl mx-auto mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-1100 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-6 sm:mb-8">About the Developer</h2>
             <div className="bg-slate-800/50 p-6 sm:p-8 lg:p-12 rounded-lg border border-slate-700 hover:border-blue-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/10">
               <div className="flex flex-col lg:flex-row items-start lg:items-center mb-6 lg:mb-8">
@@ -229,7 +229,7 @@ const About = ({ onBackToLanding }) => {
           </div>
 
           {/* Project Status */}
-          <div className={`mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-1300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <div className={`w-full max-w-7xl mx-auto mb-12 sm:mb-16 lg:mb-20 transition-all duration-1000 delay-1300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-6 sm:mb-8">Project Status</h2>
             <div className="bg-yellow-900/20 border border-yellow-600/30 rounded-lg p-6 sm:p-8 lg:p-12 hover:border-yellow-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-yellow-500/20">
               <div className="flex items-center mb-4 lg:mb-6">
@@ -265,7 +265,7 @@ const About = ({ onBackToLanding }) => {
           </div>
 
           {/* Back to Home */}
-          <div className={`text-center transition-all duration-1000 delay-1500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <div className={`w-full max-w-7xl mx-auto text-center transition-all duration-1000 delay-1500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <button
               onClick={onBackToLanding}
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 lg:px-12 lg:py-4 rounded-lg font-semibold transition-all duration-300 text-sm sm:text-base lg:text-lg hover:scale-105 hover:shadow-lg hover:shadow-blue-500/30"
