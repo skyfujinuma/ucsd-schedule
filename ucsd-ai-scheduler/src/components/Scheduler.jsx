@@ -1735,10 +1735,12 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
         </div>
       </nav>
 
-      <div className="w-full py-4 sm:py-6 lg:py-8">
+      {/* Main Content */}
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <div className="w-full mx-auto">
         
         {/* Responsive layout with three columns */}
-        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)] lg:h-[calc(100vh-220px)] px-2 sm:px-3 lg:px-4">
+        <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2 sm:gap-3 h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)] lg:h-[calc(100vh-220px)]">
           {/* Left column - Form and Course Suggestions */}
           <div className={`md:col-span-1 lg:col-span-1 xl:col-span-1 2xl:col-span-1 bg-slate-800/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl shadow-lg border border-slate-700/50 h-full overflow-y-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
         
@@ -1770,13 +1772,7 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
                 required
               >
                 <option value="">Select a college</option>
-                <option value="Revelle">Revelle</option>
-                <option value="Muir">Muir</option>
-                <option value="Marshall">Marshall</option>
                 <option value="Warren">Warren</option>
-                <option value="Roosevelt">Roosevelt</option>
-                <option value="Sixth">Sixth</option>
-                <option value="Seventh">Seventh</option>
               </select>
             </div>
           </div>
@@ -2254,7 +2250,8 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
             })()}
           </div>
         </div>
-      </div>
+        </div>
+      </main>
 
       {/* Conflict Popup */}
       {conflictPopup && (
