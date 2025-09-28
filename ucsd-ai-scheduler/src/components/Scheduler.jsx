@@ -1725,12 +1725,13 @@ const Scheduler = ({ onBackToLanding, onAbout }) => {
             <a 
               href="#home" 
               onClick={(e) => { e.preventDefault(); onBackToLanding(); }}
-              className="text-sm sm:text-base hover:text-slate-300 transition-colors no-underline" 
+              className="text-sm sm:text-base hover:text-slate-300 hover:scale-115 transition-transform duration-300 cursor-pointer" 
               style={{ color: 'white', textDecoration: 'none' }}
             >
               Home
             </a>
-            <a onClick={onAbout} className="text-sm sm:text-base hover:text-slate-300 transition-colors cursor-pointer" style={{ color: 'white', textDecoration: 'none' }}>About</a>
+            <a onClick={onAbout} className="text-sm sm:text-base hover:text-slate-300 hover:scale-115 transition-transform duration-300 cursor-pointer" 
+            style={{ color: 'white', textDecoration: 'none' }}>About</a>
           </div>
         </div>
       </nav>

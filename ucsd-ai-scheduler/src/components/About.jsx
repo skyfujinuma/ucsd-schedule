@@ -59,12 +59,12 @@ const About = ({ onBackToLanding }) => {
           <div className="flex items-center space-x-3 sm:space-x-4 lg:space-x-6">
             <a 
               onClick={onBackToLanding}
-              className="text-sm sm:text-base hover:text-slate-300 transition-colors cursor-pointer"
+              className="text-sm sm:text-base hover:text-slate-300 hover:scale-115 transition-transform duration-300 cursor-pointer"
               style={{ color: 'white', textDecoration: 'none' }}
             >
               Home
             </a>
-            <a onClick={() => {}} className="text-sm sm:text-base hover:text-slate-300 transition-colors cursor-pointer" style={{ color: 'white', textDecoration: 'none' }}>About</a>
+            <a onClick={() => {}} className="text-sm sm:text-base hover:text-slate-300 hover:scale-115 transition-transform duration-300 cursor-pointer" style={{ color: 'white', textDecoration: 'none' }}>About</a>
           </div>
         </div>
       </nav>

@@ -57,8 +57,8 @@ const LandingPage = ({ onGetStarted, onAbout }) => {
             </a>
           </div>
           <div className="flex items-center space-x-3 sm:space-x-4 lg:space-x-6">
-            <a onClick={() => {}} className="text-sm sm:text-base hover:text-slate-300 transition-colors cursor-pointer" style={{ color: 'white', textDecoration: 'none' }}>Home</a>
-            <a onClick={onAbout} className="text-sm sm:text-base hover:text-slate-300 transition-colors cursor-pointer" style={{ color: 'white', textDecoration: 'none' }}>About</a>
+            <a onClick={() => {}} className="text-sm sm:text-base hover:text-slate-300 hover:scale-115 transition-transform duration-300 cursor-pointer" style={{ color: 'white', textDecoration: 'none' }}>Home</a>
+            <a onClick={onAbout} className="text-sm sm:text-base hover:text-slate-300 hover:scale-115 transition-transform duration-300 cursor-pointer" style={{ color: 'white', textDecoration: 'none' }}>About</a>
           </div>
         </div>
       </nav>
@@ -69,7 +69,7 @@ const LandingPage = ({ onGetStarted, onAbout }) => {
           {/* Main Title */}
           <div className={`flex flex-col items-center mb-1 sm:mb-2 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <h1 
-              className="font-black leading-none hover:scale-105 transition-transform duration-500 cursor-pointer bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent"
+              className="font-black leading-none hover:scale-105 transition-transform duration-500 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent"
               style={{ 
                 fontSize: 'clamp(4rem, 15vw, 10rem)',
                 fontWeight: '900',
@@ -137,7 +137,7 @@ const LandingPage = ({ onGetStarted, onAbout }) => {
               <p className="text-sm sm:text-base text-slate-300 mb-3 sm:mb-4 group-hover:text-slate-200 transition-colors">Experience the course planning capabilities with the majors and colleges implemented thus far.</p>
               <button
                 onClick={onGetStarted}
-                className="text-blue-400 hover:text-blue-300 font-medium text-sm sm:text-base hover:scale-105 transition-all duration-300"
+                className="text-blue-400 hover:text-blue-300 text-slate-300 font-medium text-sm sm:text-base hover:scale-105 transition-all duration-300"
               >
                 Get Started →
               </button>
@@ -147,7 +147,7 @@ const LandingPage = ({ onGetStarted, onAbout }) => {
               <p className="text-sm sm:text-base text-slate-300 mb-3 sm:mb-4 group-hover:text-slate-200 transition-colors">Get to know more about taco and its developmental process.</p>
               <button
                 onClick={onAbout}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-semibold transition-all duration-300 text-sm sm:text-base hover:scale-105 hover:shadow-lg hover:shadow-blue-500/30"
+                className="bg-blue-600 hover:bg-blue-700 text-slate-300 px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-semibold transition-all duration-300 text-sm sm:text-base hover:scale-105 hover:shadow-lg hover:shadow-blue-500/30"
               >
                 Learn More →
               </button>
