@@ -1,0 +1,16 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="16" fill="#1e293b"/>
+  
+  <!-- T on top left -->
+  <text x="12" y="16" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#f97316">T</text>
+  
+  <!-- A on top right -->
+  <text x="20" y="16" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#f97316">A</text>
+  
+  <!-- C on bottom left -->
+  <text x="12" y="25" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#f97316">C</text>
+  
+  <!-- O on bottom right -->
+  <text x="20" y="25" font-family="Arial, sans-serif" font-size="12" font-weight="bold" text-anchor="middle" fill="#f97316">O</text>
+</svg>
