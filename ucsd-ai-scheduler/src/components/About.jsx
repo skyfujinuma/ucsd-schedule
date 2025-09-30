@@ -212,7 +212,7 @@ const About = ({ onBackToLanding }) => {
                   GitHub Profile
                 </a>
                 <a
-                  href="https://www.linkedin.com/in/sky-fujinuma-b55704263/"
+                  href="https://www.linkedin.com/in/skyfujinuma"
                   className="!text-slate-300 px-6 py-3 lg:px-8 lg:py-4 rounded-lg font-medium transition-all duration-300 text-sm sm:text-base lg:text-lg text-center hover:scale-105 hover:shadow-lg"
                   style={{ backgroundColor: '#0077B5' }}
                 >
